@@ -1,0 +1,1170 @@
+<!doctype html>
+<html lang="en" xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Punch Walk</title>
+<meta name="description" content="Field punch walks for 7 Brew stand hand-overs">
+<meta name="theme-color" content="#0b5d8a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Punch Walk">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+@font-face{font-family:"Barlow";font-weight:400;font-display:swap;src:url(fonts/barlow-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow";font-weight:500;font-display:swap;src:url(fonts/barlow-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow";font-weight:600;font-display:swap;src:url(fonts/barlow-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:600;font-display:swap;src:url(fonts/barlow-condensed-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:700;font-display:swap;src:url(fonts/barlow-condensed-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:500;font-display:swap;src:url(fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2")}
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+/* Layout: single-column field app, sticky walk header, large tap targets for gloved/outdoor use */
+:root{
+  --bg:#eef1f3; --surface:#ffffff; --surface-2:#f6f8f9; --ink:#15212b; --muted:#5b6872; --line:#d3dade;
+  --accent:#0b5d8a; --accent-ink:#ffffff; --accent-soft:#dcebf3;
+  --ok:#1f7a3f; --ok-soft:#ddf1e3; --bad:#c2321f; --bad-soft:#fbe3df; --na:#6f7c86; --na-soft:#e6eaed;
+  --font-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --font-body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f161c; --surface:#18222a; --surface-2:#1d2932; --ink:#e8edf0; --muted:#94a2ac; --line:#2c3a45;
+  --accent:#4fa8d8; --accent-ink:#06131c; --accent-soft:#16364a;
+  --ok:#4cc27a; --ok-soft:#163a25; --bad:#ff6b57; --bad-soft:#47201a; --na:#93a0a9; --na-soft:#26323b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f161c; --surface:#18222a; --surface-2:#1d2932; --ink:#e8edf0; --muted:#94a2ac; --line:#2c3a45;
+  --accent:#4fa8d8; --accent-ink:#06131c; --accent-soft:#16364a;
+  --ok:#4cc27a; --ok-soft:#163a25; --bad:#ff6b57; --bad-soft:#47201a; --na:#93a0a9; --na-soft:#26323b; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--font-body);font-size:16px;line-height:1.4;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#app{max-width:780px;margin:0 auto;padding-bottom:48px}
+.pad{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:.01em;text-wrap:balance;margin:0}
+h1{font-size:30px;line-height:1.05}
+h2{font-size:22px}
+h3{font-size:18px}
+.eyebrow{font-family:var(--font-display);font-weight:600;font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.stack{display:flex;flex-direction:column;gap:12px}
+.rowx{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+
+/* top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar-in{display:flex;align-items:center;gap:10px;min-height:56px;padding-block:8px}
+.bar .title{font-family:var(--font-display);font-weight:700;font-size:20px;line-height:1.1;min-width:0}
+.bar .sub{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{min-width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;font-weight:600;font-size:15px}
+.iconbtn svg{width:20px;height:20px}
+
+/* buttons */
+.btn{min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:10px 16px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.block{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn svg{width:20px;height:20px}
+
+.section{padding-block:18px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.note{font-size:14px;color:var(--muted)}
+.banner{background:var(--accent-soft);border-radius:12px;padding:12px 14px;font-size:14px}
+.banner.warn{background:var(--bad-soft)}
+
+/* walk list cards */
+.walk{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.walk .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.walk .stand{font-family:var(--font-display);font-weight:700;font-size:20px}
+.prog{height:8px;border-radius:4px;background:var(--na-soft);overflow:hidden;display:flex;margin-top:10px}
+.prog i{display:block;height:100%}
+.prog .p-ok{background:var(--ok)} .prog .p-bad{background:var(--bad)} .prog .p-na{background:var(--na)}
+
+/* forms */
+label.f{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px}
+label.f span{font-family:var(--font-display);letter-spacing:.06em;text-transform:uppercase;font-size:13px;color:var(--muted)}
+input[type=text],input[type=date],input[type=search],select,textarea{width:100%;min-height:48px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 12px;font-size:16px}
+textarea{min-height:96px;resize:vertical}
+.check{display:flex;gap:10px;align-items:center;min-height:44px;font-weight:500}
+.check input{width:22px;height:22px;accent-color:var(--accent)}
+
+/* walk header */
+.whead{padding-block:10px 12px;display:flex;flex-direction:column;gap:10px;background:var(--surface);border-bottom:1px solid var(--line)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;min-height:38px;border-radius:19px;border:1px solid var(--line);background:var(--surface-2);padding:6px 12px;font-weight:600;font-size:14px;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.chip b{font-family:var(--font-mono);font-weight:500;font-size:13px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip .dot{width:9px;height:9px;border-radius:50%}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.filters input,.filters select{min-height:42px;padding:8px 10px;font-size:15px}
+
+/* item rows */
+.group{padding-block:14px 4px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.group h3{font-size:17px;letter-spacing:.05em;text-transform:uppercase}
+.items{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;align-items:stretch;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;border-left:6px solid var(--line)}
+.row.st-complete{border-left-color:var(--ok)}
+.row.st-open{border-left-color:var(--bad)}
+.row.st-na{border-left-color:var(--na)}
+.row-main{flex:1;min-width:0;text-align:left;background:none;border:0;padding:10px 10px 10px 12px;display:flex;flex-direction:column;gap:4px}
+.row-main .txt{font-weight:500;line-height:1.3;overflow-wrap:anywhere}
+.row-main .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);align-items:center}
+.row-main .no{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.tag{display:inline-flex;align-items:center;gap:4px}
+.tag svg{width:14px;height:14px}
+.seg{display:flex;flex:none;border-left:1px solid var(--line)}
+.seg button{width:50px;border:0;border-left:1px solid var(--line);background:var(--surface-2);font-weight:700;font-size:15px;color:var(--muted);display:flex;align-items:center;justify-content:center}
+.seg button:first-child{border-left:0}
+.seg button svg{width:22px;height:22px}
+.seg button.na{font-family:var(--font-display);font-size:15px;letter-spacing:.03em}
+.seg button[aria-pressed="true"].ok{background:var(--ok);color:#fff}
+.seg button[aria-pressed="true"].bad{background:var(--bad);color:#fff}
+.seg button[aria-pressed="true"].na{background:var(--na);color:#fff}
+@media (max-width:400px){.seg button{width:44px}}
+.empty{padding:28px 8px;text-align:center;color:var(--muted)}
+
+/* item detail */
+.bigseg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.bigseg button{min-height:56px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:6px}
+.bigseg button svg{width:20px;height:20px}
+.bigseg button[aria-pressed="true"].ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.bigseg button[aria-pressed="true"].bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.bigseg button[aria-pressed="true"].na{background:var(--na);border-color:var(--na);color:#fff}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.ph{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--surface-2);aspect-ratio:4/3;max-width:100%}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph .open{position:absolute;inset:0;border:0;background:none;padding:0}
+.ph .badge{position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,.65);color:#fff;font-size:12px;font-weight:600;border-radius:6px;padding:2px 7px;pointer-events:none}
+.ph .del{position:absolute;right:6px;top:6px;height:34px;min-width:34px;border-radius:8px;border:0;background:rgba(0,0,0,.6);color:#fff;font-weight:700;font-size:13px;padding:0 8px;display:flex;align-items:center;justify-content:center}
+.ph .del.confirm{background:var(--bad)}
+.ph .del svg{width:18px;height:18px}
+.addph{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.filebtn{position:relative;overflow:hidden}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.navrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.itemtext{font-size:20px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.kv div{background:var(--surface-2);border-radius:10px;padding:8px 10px}
+.kv b{display:block;font-family:var(--font-display);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+/* annotator */
+.ann{position:fixed;inset:0;z-index:50;background:#0b0f12;display:flex;flex-direction:column;color:#fff;
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+.ann-stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px}
+.ann canvas{max-width:100%;max-height:100%;touch-action:none;display:block;border-radius:4px}
+.ann-bar{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 10px}
+.ann-bar button{min-height:44px;min-width:44px;border-radius:10px;border:1px solid #33414c;background:#18222a;color:#fff;font-weight:600;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.ann-bar button svg{width:20px;height:20px}
+.ann-bar button[aria-pressed="true"]{background:#e8edf0;color:#0b0f12}
+.ann-bar .sw{width:44px;padding:0}
+.ann-bar .sw i{width:22px;height:22px;border-radius:50%;display:block;border:2px solid #fff}
+.ann-bar .sw[aria-pressed="true"]{background:#33414c;color:#fff;outline:3px solid #e8edf0}
+.ann-bar .save{background:#4fa8d8;border-color:#4fa8d8;color:#06131c}
+.ann-bar .sep{width:1px;height:28px;background:#33414c;margin:0 2px}
+.ann-hint{font-size:13px;color:#94a2ac;text-align:center;padding-top:6px}
+
+.sheet-back{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:55;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:780px;border-radius:18px 18px 0 0;padding:20px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.sheet .fname{font-weight:600;overflow-wrap:anywhere}
+details.more{border-top:1px solid var(--line);padding-top:10px}
+details.more summary{cursor:pointer;font-weight:600;min-height:40px;display:flex;align-items:center}
+details.more .stack{padding-top:8px}
+.update{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--accent);color:var(--accent-ink);display:flex;gap:10px;align-items:center;justify-content:space-between;padding-block:8px}
+.update button{background:var(--accent-ink);color:var(--accent);border:0;border-radius:8px;min-height:38px;padding:0 12px;font-weight:700}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:60;max-width:calc(100% - 32px);font-size:15px}
+.stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.stat div{border-radius:12px;padding:10px 12px;background:var(--surface-2)}
+.stat b{display:block;font-family:var(--font-mono);font-size:24px;font-weight:500}
+.stat span{font-size:13px;color:var(--muted)}
+.stat .s-ok{background:var(--ok-soft)} .stat .s-bad{background:var(--bad-soft)} .stat .s-na{background:var(--na-soft)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+
+<!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:_dlc_DocId msdt:dt="string">AUY3WPNZJK3E-950499291-21936</mso:_dlc_DocId>
+<mso:_dlc_DocIdItemGuid msdt:dt="string">c8d9ebc1-7d56-4e27-9649-04ed7deaac35</mso:_dlc_DocIdItemGuid>
+<mso:_dlc_DocIdUrl msdt:dt="string">https://pacificbells.sharepoint.com/Development/7Brew/_layouts/15/DocIdRedir.aspx?ID=AUY3WPNZJK3E-950499291-21936, AUY3WPNZJK3E-950499291-21936</mso:_dlc_DocIdUrl>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+</head>
+<body>
+<div id="app"></div>
+<div id="sheetRoot"></div>
+<div id="annRoot"></div>
+
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ---------- icons ---------- */
+const I = {
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  img:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1.5"/></svg>',
+  note:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 4h14v12l-4 4H5z"/><path d="M9 9h6M9 13h4"/></svg>',
+  report:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7M9 8h3"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+  pen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/></svg>',
+  arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19L19 5M10 5h9v9"/></svg>',
+  circle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><ellipse cx="12" cy="12" rx="8" ry="6.5"/></svg>',
+  box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="4" y="6" width="16" height="12" rx="1"/></svg>',
+  undo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L4 9l5 5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg>',
+  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v8h14v-8"/></svg>',
+  file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11l6 6M15 11l-6 6"/></svg>'
+};
+
+/* ---------- helpers ---------- */
+const $ = (s, r=document) => r.querySelector(s);
+const app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => (Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const fmtDate = s => { if (!s) return ''; const [y,m,d] = s.split('-').map(Number); if(!y) return s; return new Date(y, m-1, d).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}); };
+const STATUS = { complete:'Complete', open:'Not complete', na:'N/A', '':'Not checked' };
+let toastTimer;
+function toast(msg){ let t = $('.toast'); if(!t){ t = document.createElement('div'); t.className='toast'; t.setAttribute('role','status'); document.body.appendChild(t); } t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(()=>{ t.hidden = true; }, 2600); }
+
+/* ---------- storage (IndexedDB on this device, memory fallback) ---------- */
+const DB = {
+  db:null, ok:false, mem:{walks:new Map(), photos:new Map(), meta:new Map()},
+  async open(){
+    try{
+      this.db = await new Promise((res, rej) => {
+        const r = indexedDB.open('punch-walk', 1);
+        r.onupgradeneeded = () => { const d = r.result; ['walks','photos','meta'].forEach(s => { if(!d.objectStoreNames.contains(s)) d.createObjectStore(s); }); };
+        r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+      });
+      this.ok = true;
+      try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+    }catch(e){ this.ok = false; }
+  },
+  tx(store, mode, fn){
+    return new Promise((res, rej) => {
+      let req; const t = this.db.transaction(store, mode);
+      req = fn(t.objectStore(store));
+      t.oncomplete = () => res(req ? req.result : undefined);
+      t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    });
+  },
+  async get(s,k){ if(!this.ok) return this.mem[s].get(k); try{ return await this.tx(s,'readonly',o=>o.get(k)); }catch(e){ return undefined; } },
+  async put(s,k,v){ if(!this.ok){ this.mem[s].set(k,v); return; } try{ await this.tx(s,'readwrite',o=>o.put(v,k)); }catch(e){ toast('Could not save. Phone storage may be full.'); } },
+  async del(s,k){ if(!this.ok){ this.mem[s].delete(k); return; } try{ await this.tx(s,'readwrite',o=>o.delete(k)); }catch(e){} },
+  async all(s){ if(!this.ok) return [...this.mem[s].values()]; try{ return await this.tx(s,'readonly',o=>o.getAll()); }catch(e){ return []; } }
+};
+
+/* ---------- state ---------- */
+const S = { view:'home', template:null, needPass:false, passMsg:'', online:navigator.onLine !== false, updateReady:null, walks:[], walk:null, itemId:null, filter:'all', loc:'all', q:'', scroll:0, delArm:null };
+let saveTimer = null;
+function saveWalk(now){
+  if(!S.walk) return;
+  S.walk.updated = Date.now();
+  clearTimeout(saveTimer);
+  const w = S.walk;
+  if(now) return DB.put('walks', w.id, w);
+  saveTimer = setTimeout(() => DB.put('walks', w.id, w), 350);
+}
+function flush(){ if(saveTimer){ clearTimeout(saveTimer); saveTimer = null; if(S.walk) return DB.put('walks', S.walk.id, S.walk); } return Promise.resolve(); }
+window.addEventListener('pagehide', flush);
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') flush(); });
+
+/* ---------- template parsing (reads the user's Excel at runtime) ---------- */
+const cleanLoc = s => String(s || '').trim().replace(/^\.+/, '').replace(/^z(?=[A-Z])/, '').trim() || 'MISC.';
+function limitedRows(ws){
+  if(!ws || !ws['!ref']) return [];
+  const r = XLSX.utils.decode_range(ws['!ref']);
+  r.e.c = Math.min(r.e.c, 30); r.e.r = Math.min(r.e.r, 3000);
+  return XLSX.utils.sheet_to_json(ws, {header:1, range:r, defval:null, raw:false, blankrows:false});
+}
+function parseTemplate(wb, fileName){
+  const name = wb.SheetNames.find(n => /punch/i.test(n)) || wb.SheetNames[0];
+  const rows = limitedRows(wb.Sheets[name]);
+  let h = -1, col = {};
+  for(let i = 0; i < Math.min(rows.length, 40); i++){
+    const r = (rows[i] || []).map(c => String(c ?? '').trim().toLowerCase());
+    if(r.includes('item') && r.some(c => c.startsWith('location'))){
+      h = i;
+      r.forEach((c, j) => {
+        if(c === 'no' || c === 'no.' || c === '#') col.no = j;
+        else if(c === 'item') col.item = j;
+        else if(c.startsWith('division')) col.div = j;
+        else if(c.startsWith('location')) col.loc = j;
+        else if(c.startsWith('resp')) col.resp = j;
+      });
+      break;
+    }
+  }
+  if(h < 0 || col.item == null) throw new Error('Could not find the Item and Location header row in this file.');
+  const items = [];
+  for(let i = h + 1; i < rows.length; i++){
+    const r = rows[i] || [];
+    const text = String(r[col.item] ?? '').trim();
+    if(!text || /^description$/i.test(text)) continue;
+    items.push({
+      no: col.no != null ? String(r[col.no] ?? '').trim() : '',
+      item: text,
+      division: col.div != null ? String(r[col.div] ?? '').trim() : '',
+      location: cleanLoc(col.loc != null ? r[col.loc] : ''),
+      resp: col.resp != null ? String(r[col.resp] ?? '').trim() : ''
+    });
+  }
+  if(!items.length) throw new Error('No checklist items were found under the header row.');
+  const divisions = new Set(items.map(x => x.division).filter(Boolean));
+  const resps = new Set(items.map(x => x.resp).filter(Boolean));
+  const locations = new Set(items.map(x => x.location));
+  const dataName = wb.SheetNames.find(n => /^data$/i.test(n.trim()));
+  if(dataName){
+    const dr = limitedRows(wb.Sheets[dataName]);
+    let hdr = -1, dc = {};
+    for(let i = 0; i < Math.min(dr.length, 15); i++){
+      const r = (dr[i] || []).map(c => String(c ?? '').trim().toLowerCase());
+      if(r.some(c => c.startsWith('division')) && r.some(c => c.startsWith('resp'))){
+        hdr = i; r.forEach((c,j) => { if(c.startsWith('division')) dc.div = j; else if(c.startsWith('location')) dc.loc = j; else if(c.startsWith('resp')) dc.resp = j; }); break;
+      }
+    }
+    if(hdr >= 0) for(let i = hdr + 1; i < dr.length; i++){
+      const r = dr[i] || [];
+      if(dc.div != null && r[dc.div]) divisions.add(String(r[dc.div]).trim());
+      if(dc.resp != null && r[dc.resp]) resps.add(String(r[dc.resp]).trim());
+      if(dc.loc != null && r[dc.loc]) locations.add(cleanLoc(r[dc.loc]));
+    }
+  }
+  return { fileName, loaded: Date.now(), items, divisions:[...divisions].sort(), resps:[...resps].sort(), locations: orderLocs([...locations]) };
+}
+function orderLocs(list){
+  const first = l => /pre-stand/i.test(l) ? 0 : /^misc/i.test(l) ? 2 : 1;
+  return [...new Set(list)].sort((a,b) => first(a) - first(b) || a.localeCompare(b));
+}
+
+/* ---------- counts ---------- */
+function counts(w){
+  const c = { total:w.items.length, complete:0, open:0, na:0, todo:0, photos:0 };
+  w.items.forEach(it => { if(it.status === 'complete') c.complete++; else if(it.status === 'open') c.open++; else if(it.status === 'na') c.na++; else c.todo++; c.photos += it.photos.length; });
+  return c;
+}
+function progBar(c){
+  const p = n => c.total ? (n / c.total * 100).toFixed(2) + '%' : '0';
+  return `<div class="prog" aria-hidden="true"><i class="p-ok" style="width:${p(c.complete)}"></i><i class="p-bad" style="width:${p(c.open)}"></i><i class="p-na" style="width:${p(c.na)}"></i></div>`;
+}
+
+/* ---------- views ---------- */
+function go(view, opts={}){
+  flush();
+  if(S.view === 'walk') S.scroll = window.scrollY;
+  S.view = view; Object.assign(S, opts); S.delArm = null;
+  render();
+  if(view === 'walk' && opts.keepScroll) window.scrollTo(0, S.scroll); else if(!opts.keepScroll) window.scrollTo(0, 0);
+}
+function render(){
+  const v = S.view;
+  if(v === 'home') return renderHome();
+  if(v === 'new') return renderWalkForm(null);
+  if(v === 'edit') return renderWalkForm(S.walk);
+  if(v === 'walk') return renderWalk();
+  if(v === 'item') return renderItem();
+  if(v === 'additem') return renderAddItem();
+  if(v === 'report') return renderReport();
+}
+
+function renderHome(){
+  const t = S.template;
+  const walks = [...S.walks].sort((a,b) => (b.updated||0) - (a.updated||0));
+  app.innerHTML = `
+  ${S.updateReady ? `<div class="update pad"><span>A new version of the app is ready.</span><button data-act="applyupdate">Update</button></div>` : ''}
+  <header class="bar"><div class="bar-in pad"><div class="grow"><div class="title">Punch Walk</div><div class="sub">7 Brew stand hand-over punch lists</div></div></div></header>
+  <div class="pad section stack">
+    ${DB.ok ? '' : '<div class="banner warn">This browser is blocking on-device storage. Walks will be lost when the page closes. Save the report before leaving.</div>'}
+    ${S.online ? '' : '<div class="banner">No signal. The app keeps working offline, and walks, photos and markup save on this phone.</div>'}
+    <div class="panel stack">
+      <div class="eyebrow">Checklist template</div>
+      ${t ? `<div><strong>${esc(t.fileName)}</strong><div class="note">${t.items.length} items across ${t.locations.length} locations · updated ${new Date(t.loaded).toLocaleDateString()}${t.local ? ' · this phone only' : ' · team checklist'}</div></div>` : ''}
+      ${!t || S.needPass ? `
+        <div class="note">${esc(S.passMsg || 'Enter the team passcode once to load the checklist on this phone. After that it works offline.')}</div>
+        <form id="unlockForm" class="rowx" autocomplete="off"><input type="text" id="u-pass" class="grow" placeholder="Team passcode" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Team passcode"><button class="btn primary" type="submit">Unlock</button></form>` : ''}
+      <details class="more"><summary>Template options</summary><div class="stack">
+        <div class="note">Use a different checklist on this phone only. Walks already started keep their original list.</div>
+        <label class="btn filebtn">${I.file}<span>Load Excel for this phone</span><input id="tplFile" type="file" accept=".xlsx,.xlsm,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
+        ${t && t.local ? `<button class="btn" data-act="teamtpl">Switch back to the team checklist</button>` : ''}
+        <div class="eyebrow" style="margin-top:6px">Update the team checklist</div>
+        <div class="note">Build a new encrypted template file from an Excel workbook, then upload it to the GitHub repo in place of template.enc.json. Every phone picks it up the next time the app opens with signal.</div>
+        <label class="f"><span>Passcode for the new file</span><input type="text" id="g-pass" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="At least 8 characters"></label>
+        <label class="btn filebtn">${I.file}<span>Choose Excel and build file</span><input id="genFile" type="file" accept=".xlsx,.xlsm,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
+      </div></details>
+    </div>
+    <button class="btn primary block" data-act="new" ${t ? '' : 'disabled'}>${I.plus}<span>Start a new punch walk</span></button>
+    <div class="rowx" style="justify-content:space-between;margin-top:8px"><h2>Walks on this phone</h2><span class="note mono">${walks.length}</span></div>
+    ${walks.length ? walks.map(w => { const c = counts(w); return `
+      <button class="walk" data-act="openwalk" data-id="${esc(w.id)}">
+        <div class="top"><span class="stand">${esc(w.stand || 'Untitled stand')}</span><span class="note mono">${esc(fmtDate(w.date))}</span></div>
+        <div class="note">${esc(w.address || '')}</div>
+        ${progBar(c)}
+        <div class="note mono" style="margin-top:6px">${c.total - c.todo}/${c.total} checked · ${c.open} not complete · ${c.photos} photos</div>
+      </button>`; }).join('')
+      : `<div class="panel empty">No walks yet. Load the template, then start a walk for a stand. Each walk lists every template item grouped by location, ready to mark Complete, Not complete or N/A.</div>`}
+    <p class="note">Walks and photos are stored only on this phone. Share the PDF report to send results to others. Add this app to your home screen so it opens offline.</p>
+  </div>`;
+}
+
+function renderWalkForm(w){
+  const isNew = !w;
+  w = w || { stand:'', address:'', date:today(), by:'', attendees:'', gc:'' };
+  app.innerHTML = `
+  <header class="bar"><div class="bar-in pad">
+    <button class="iconbtn" data-act="${isNew ? 'home' : 'backwalk'}" aria-label="Back">${I.back}</button>
+    <div class="grow"><div class="title">${isNew ? 'New punch walk' : 'Walk details'}</div></div>
+  </div></header>
+  <form class="pad section stack" id="walkForm" autocomplete="off">
+    <label class="f"><span>Stand #</span><input type="text" id="f-stand" value="${esc(w.stand)}" placeholder="e.g. CIPM0169" required></label>
+    <label class="f"><span>Address</span><input type="text" id="f-addr" value="${esc(w.address)}" placeholder="Street, city, state"></label>
+    <label class="f"><span>Walk date</span><input type="date" id="f-date" value="${esc(w.date)}"></label>
+    <label class="f"><span>General contractor</span><input type="text" id="f-gc" value="${esc(w.gc)}" placeholder="e.g. Motley"></label>
+    <label class="f"><span>Walked by</span><input type="text" id="f-by" value="${esc(w.by)}" placeholder="Your name"></label>
+    <label class="f"><span>Attendees</span><textarea id="f-att" placeholder="Names and companies on the walk">${esc(w.attendees)}</textarea></label>
+    <button class="btn primary block" type="submit">${isNew ? 'Start walk' : 'Save details'}</button>
+    ${isNew ? '' : `<button class="btn danger block" type="button" data-act="delwalk" id="delWalkBtn">${I.trash}<span>Delete this walk</span></button>`}
+  </form>`;
+}
+
+function itemVisible(it){
+  if(S.filter !== 'all'){
+    if(S.filter === 'todo' && it.status) return false;
+    if(S.filter !== 'todo' && S.filter !== 'photos' && it.status !== S.filter) return false;
+    if(S.filter === 'photos' && !it.photos.length) return false;
+  }
+  if(S.loc !== 'all' && it.location !== S.loc) return false;
+  if(S.q){ const q = S.q.toLowerCase(); if(!(it.item.toLowerCase().includes(q) || String(it.no).includes(q) || (it.notes||'').toLowerCase().includes(q))) return false; }
+  return true;
+}
+function visibleItems(){
+  const w = S.walk; const out = [];
+  w.locations.forEach(loc => w.items.forEach(it => { if(it.location === loc && itemVisible(it)) out.push(it); }));
+  return out;
+}
+function rowHTML(it){
+  const st = it.status || '';
+  return `<div class="row st-${st || 'none'}" data-id="${esc(it.id)}">
+    <button class="row-main" data-act="item" data-id="${esc(it.id)}">
+      <span class="txt">${esc(it.item)}</span>
+      <span class="meta"><span class="no">#${esc(it.no || '—')}</span><span>${esc(it.resp || 'No resp.')}</span>
+        ${it.photos.length ? `<span class="tag">${I.cam}${it.photos.length}</span>` : ''}
+        ${it.notes ? `<span class="tag">${I.note}Note</span>` : ''}
+        ${it.fa ? '<span class="tag">Final approved</span>' : ''}</span>
+    </button>
+    <div class="seg" role="group" aria-label="Status">
+      <button class="ok" data-act="st" data-st="complete" aria-pressed="${st==='complete'}" aria-label="Complete">${I.check}</button>
+      <button class="bad" data-act="st" data-st="open" aria-pressed="${st==='open'}" aria-label="Not complete">${I.x}</button>
+      <button class="na" data-act="st" data-st="na" aria-pressed="${st==='na'}" aria-label="Not applicable">N/A</button>
+    </div>
+  </div>`;
+}
+function chipsHTML(){
+  const c = counts(S.walk);
+  const chip = (f, label, n, dot) => `<button class="chip" data-act="filter" data-f="${f}" aria-pressed="${S.filter===f}">${dot ? `<span class="dot" style="background:var(${dot})"></span>` : ''}${label} <b>${n}</b></button>`;
+  return chip('all','All',c.total) + chip('todo','Not checked',c.todo) + chip('open','Not complete',c.open,'--bad') + chip('complete','Complete',c.complete,'--ok') + chip('na','N/A',c.na,'--na') + chip('photos','With photos', S.walk.items.filter(i=>i.photos.length).length);
+}
+function renderWalk(){
+  const w = S.walk; const c = counts(w);
+  app.innerHTML = `
+  <header class="bar"><div class="bar-in pad">
+    <button class="iconbtn" data-act="home" aria-label="All walks">${I.back}</button>
+    <div class="grow"><div class="title">${esc(w.stand || 'Untitled stand')}</div><div class="sub">${esc(w.address || fmtDate(w.date))}</div></div>
+    <button class="iconbtn" data-act="edit" aria-label="Walk details">${I.gear}</button>
+    <button class="iconbtn" data-act="report">${I.report}<span>Report</span></button>
+  </div></header>
+  <div class="whead pad">
+    <div id="progWrap">${progBar(c)}<div class="note mono" style="margin-top:6px" id="progText">${c.total - c.todo} of ${c.total} checked · ${c.open} not complete</div></div>
+    <div class="chips" id="chips">${chipsHTML()}</div>
+    <div class="filters">
+      <select id="locSel" aria-label="Location"><option value="all">All locations</option>${w.locations.map(l => `<option value="${esc(l)}" ${S.loc===l?'selected':''}>${esc(l)}</option>`).join('')}</select>
+      <input type="search" id="q" placeholder="Search items" value="${esc(S.q)}" aria-label="Search items">
+    </div>
+  </div>
+  <div class="pad" id="list"></div>
+  <div class="pad section"><button class="btn block" data-act="additem">${I.plus}<span>Add an item not on the list</span></button></div>`;
+  renderList();
+}
+function renderList(){
+  const w = S.walk; const list = $('#list'); if(!list) return;
+  let html = '';
+  w.locations.forEach(loc => {
+    const all = w.items.filter(it => it.location === loc);
+    const vis = all.filter(itemVisible);
+    if(!vis.length) return;
+    const done = all.filter(it => it.status).length;
+    html += `<div class="group"><h3>${esc(loc)}</h3><span class="note mono">${done}/${all.length}</span></div><div class="items">${vis.map(rowHTML).join('')}</div>`;
+  });
+  list.innerHTML = html || `<div class="empty">No items match this filter.</div>`;
+}
+function refreshCounts(){
+  const c = counts(S.walk);
+  const pw = $('#progWrap'); if(pw) pw.innerHTML = `${progBar(c)}<div class="note mono" style="margin-top:6px">${c.total - c.todo} of ${c.total} checked · ${c.open} not complete</div>`;
+  const ch = $('#chips'); if(ch){ const sl = ch.scrollLeft; ch.innerHTML = chipsHTML(); ch.scrollLeft = sl; }
+}
+function setStatus(id, st){
+  const it = S.walk.items.find(x => x.id === id); if(!it) return;
+  it.status = it.status === st ? '' : st;
+  if(it.status !== 'complete') it.fa = false;
+  saveWalk();
+  return it;
+}
+
+function respOptions(cur){
+  const list = [...new Set([...(S.walk.resps || []), cur].filter(Boolean))].sort();
+  return `<option value="">None</option>` + list.map(r => `<option ${r===cur?'selected':''}>${esc(r)}</option>`).join('');
+}
+async function renderItem(){
+  const w = S.walk; const it = w.items.find(x => x.id === S.itemId);
+  if(!it){ go('walk',{keepScroll:true}); return; }
+  const vis = visibleItems(); let idx = vis.findIndex(x => x.id === it.id);
+  const prev = idx > 0 ? vis[idx-1] : null; const next = idx >= 0 && idx < vis.length - 1 ? vis[idx+1] : null;
+  const st = it.status || '';
+  app.innerHTML = `
+  <header class="bar"><div class="bar-in pad">
+    <button class="iconbtn" data-act="backwalk" aria-label="Back to list">${I.back}</button>
+    <div class="grow"><div class="title">Item #${esc(it.no || '—')}</div><div class="sub">${esc(it.location)}${idx >= 0 ? ` · ${idx+1} of ${vis.length}` : ''}</div></div>
+  </div></header>
+  <div class="pad section stack">
+    ${it.custom ? `<label class="f"><span>Item</span><textarea id="i-text">${esc(it.item)}</textarea></label>` : `<div class="itemtext">${esc(it.item)}</div>`}
+    <div class="kv"><div><b>Division</b>${esc(it.division || '—')}</div><div><b>Location</b>${esc(it.location)}</div></div>
+    <div class="bigseg" role="group" aria-label="Status">
+      <button class="ok" data-act="bst" data-st="complete" aria-pressed="${st==='complete'}">${I.check}Complete</button>
+      <button class="bad" data-act="bst" data-st="open" aria-pressed="${st==='open'}">${I.x}Not complete</button>
+      <button class="na" data-act="bst" data-st="na" aria-pressed="${st==='na'}">N/A</button>
+    </div>
+    <label class="check"><input type="checkbox" id="i-fa" ${it.fa ? 'checked' : ''} ${st==='complete' ? '' : 'disabled'}> Final approval given</label>
+    <label class="f"><span>Responsible party</span><select id="i-resp">${respOptions(it.resp)}</select></label>
+    <label class="f"><span>Notes / corrective action</span><textarea id="i-notes" placeholder="What needs to be corrected, by whom, by when">${esc(it.notes)}</textarea></label>
+    <div class="rowx" style="justify-content:space-between"><h3>Photos <span class="mono muted" style="font-size:14px">${it.photos.length || ''}</span></h3><span class="note">Tap a photo to mark it up</span></div>
+    <div class="photos" id="photoGrid">${it.photos.length ? '' : '<div class="note">No photos yet.</div>'}</div>
+    <div class="addph">
+      <label class="btn primary filebtn">${I.cam}<span>Take photo</span><input type="file" id="camIn" accept="image/*" capture="environment"></label>
+      <label class="btn filebtn">${I.img}<span>From library</span><input type="file" id="libIn" accept="image/*" multiple></label>
+    </div>
+    ${it.photos.length ? `<button class="btn block" data-act="itemphotos">${I.share}<span>Share or save this item's photos</span></button>` : ''}
+    <div class="navrow" style="margin-top:8px">
+      <button class="btn" data-act="goitem" data-id="${prev ? esc(prev.id) : ''}" ${prev ? '' : 'disabled'}>${I.back}<span>Previous</span></button>
+      <button class="btn" data-act="goitem" data-id="${next ? esc(next.id) : ''}" ${next ? '' : 'disabled'}><span>Next</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    ${it.custom ? `<button class="btn danger block" data-act="delitem" id="delItemBtn">${I.trash}<span>Remove this added item</span></button>` : ''}
+  </div>`;
+  renderPhotos(it);
+}
+function rerenderItem(){ const y = window.scrollY; renderItem(); window.scrollTo(0, y); }
+async function renderPhotos(it){
+  const grid = $('#photoGrid'); if(!grid || !it.photos.length) return;
+  const recs = await Promise.all(it.photos.map(id => DB.get('photos', id)));
+  if(S.view !== 'item' || S.itemId !== it.id) return;
+  grid.innerHTML = recs.map((p, i) => p ? `
+    <div class="ph"><img src="${p.ann || p.src}" alt="Photo ${i+1} for item ${esc(it.no)}">
+      <button class="open" data-act="annotate" data-pid="${esc(p.id)}" aria-label="Mark up photo ${i+1}"></button>
+      ${p.ann ? '<span class="badge">Marked up</span>' : ''}
+      <button class="del ${S.delArm===p.id?'confirm':''}" data-act="delphoto" data-pid="${esc(p.id)}" aria-label="Delete photo">${S.delArm===p.id ? 'Delete?' : I.trash}</button>
+    </div>` : '').join('');
+}
+
+function renderAddItem(){
+  const w = S.walk;
+  const divs = [...new Set(['MISC.', ...(w.divisions||[])])];
+  app.innerHTML = `
+  <header class="bar"><div class="bar-in pad"><button class="iconbtn" data-act="backwalk" aria-label="Back">${I.back}</button><div class="grow"><div class="title">Add item</div></div></div></header>
+  <form class="pad section stack" id="addForm">
+    <label class="f"><span>Description</span><textarea id="a-text" required placeholder="Describe the deficiency"></textarea></label>
+    <label class="f"><span>Location</span><select id="a-loc">${w.locations.map(l => `<option ${l===(S.loc!=='all'?S.loc:'MISC.')?'selected':''}>${esc(l)}</option>`).join('')}</select></label>
+    <label class="f"><span>Division</span><select id="a-div">${divs.map(d => `<option>${esc(d)}</option>`).join('')}</select></label>
+    <label class="f"><span>Responsible party</span><select id="a-resp">${respOptions('GC')}</select></label>
+    <button class="btn primary block" type="submit">Add item and open it</button>
+  </form>`;
+}
+
+function renderReport(){
+  const w = S.walk; const c = counts(w);
+  const byResp = {};
+  w.items.filter(i => i.status === 'open').forEach(i => { const k = i.resp || 'Unassigned'; byResp[k] = (byResp[k]||0) + 1; });
+  app.innerHTML = `
+  <header class="bar"><div class="bar-in pad"><button class="iconbtn" data-act="backwalk" aria-label="Back">${I.back}</button><div class="grow"><div class="title">Report</div><div class="sub">${esc(w.stand)} · ${esc(fmtDate(w.date))}</div></div></div></header>
+  <div class="pad section stack">
+    <div class="stat">
+      <div><b>${c.total}</b><span>Items</span></div>
+      <div class="s-ok"><b>${c.complete}</b><span>Complete</span></div>
+      <div class="s-bad"><b>${c.open}</b><span>Not complete</span></div>
+      <div class="s-na"><b>${c.na}</b><span>N/A</span></div>
+      <div><b>${c.todo}</b><span>Not checked</span></div>
+    </div>
+    ${Object.keys(byResp).length ? `<div class="panel stack"><div class="eyebrow">Open items by responsible party</div>${Object.entries(byResp).sort((a,b)=>b[1]-a[1]).map(([k,n]) => `<div class="rowx" style="justify-content:space-between"><span>${esc(k)}</span><span class="mono">${n}</span></div>`).join('')}</div>` : ''}
+    ${c.todo ? `<div class="banner">${c.todo} items are not checked yet. They can be listed in the report so nothing is missed.</div>` : ''}
+    <div class="panel stack">
+      <div class="eyebrow">PDF report contents</div>
+      <label class="check"><input type="checkbox" id="r-open" checked disabled> Not complete items with notes and marked-up photos</label>
+      <label class="check"><input type="checkbox" id="r-todo" ${c.todo ? 'checked' : ''}> Items not checked</label>
+      <label class="check"><input type="checkbox" id="r-done"> Complete and N/A items</label>
+      <button class="btn primary block" data-act="pdf">${I.report}<span>Build PDF report</span></button>
+      <button class="btn block" data-act="xlsx">${I.file}<span>Build Excel punch list</span></button>
+      <button class="btn block" data-act="allphotos" ${c.photos ? '' : 'disabled'}>${I.share}<span>Share or save all photos (${c.photos})</span></button>
+      <div class="note" id="repMsg">Each file opens a Share option: pick Mail to email it, or Dropbox to save it there. Photos are packed into one .zip file, with marked-up and original copies.</div>
+    </div>
+  </div>`;
+}
+
+/* ---------- events ---------- */
+app.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if(!b || b.disabled) return;
+  const act = b.dataset.act;
+  if(act === 'home'){ await flush(); S.walk = null; await loadWalks(); go('home'); }
+  else if(act === 'new') go('new');
+  else if(act === 'openwalk'){ S.walk = S.walks.find(w => w.id === b.dataset.id); S.filter='all'; S.loc='all'; S.q=''; S.scroll=0; go('walk'); wake(); }
+  else if(act === 'backwalk') go('walk', {keepScroll:true});
+  else if(act === 'edit') go('edit');
+  else if(act === 'report') go('report');
+  else if(act === 'additem') go('additem');
+  else if(act === 'filter'){ S.filter = b.dataset.f; refreshCounts(); renderList(); }
+  else if(act === 'st'){
+    const row = b.closest('.row'); const it = setStatus(row.dataset.id, b.dataset.st);
+    if(it){ row.outerHTML = rowHTML(it); refreshCounts(); }
+  }
+  else if(act === 'item'){ S.itemId = b.dataset.id; go('item'); }
+  else if(act === 'goitem'){ if(b.dataset.id){ S.itemId = b.dataset.id; go('item'); } }
+  else if(act === 'bst'){
+    const it = setStatus(S.itemId, b.dataset.st);
+    if(it){ document.querySelectorAll('.bigseg button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.st === it.status)));
+      const fa = $('#i-fa'); fa.disabled = it.status !== 'complete'; fa.checked = !!it.fa; }
+  }
+  else if(act === 'annotate'){ const p = await DB.get('photos', b.dataset.pid); if(p) openAnnotator(p); }
+  else if(act === 'delphoto'){
+    const pid = b.dataset.pid; const it = S.walk.items.find(x => x.id === S.itemId);
+    if(S.delArm !== pid){ S.delArm = pid; renderPhotos(it); return; }
+    it.photos = it.photos.filter(x => x !== pid); S.delArm = null;
+    await DB.del('photos', pid); saveWalk(true);
+    rerenderItem();
+    toast('Photo deleted');
+  }
+  else if(act === 'delitem'){
+    if(!b.classList.contains('armed')){ b.classList.add('armed'); b.querySelector('span').textContent = 'Tap again to remove'; return; }
+    const it = S.walk.items.find(x => x.id === S.itemId);
+    for(const pid of it.photos) await DB.del('photos', pid);
+    S.walk.items = S.walk.items.filter(x => x.id !== S.itemId); saveWalk(true); go('walk',{keepScroll:true}); toast('Item removed');
+  }
+  else if(act === 'delwalk'){
+    if(!b.classList.contains('armed')){ b.classList.add('armed'); b.querySelector('span').textContent = 'Tap again to delete walk and photos'; return; }
+    const w = S.walk;
+    for(const it of w.items) for(const pid of it.photos) await DB.del('photos', pid);
+    await DB.del('walks', w.id); S.walk = null; await loadWalks(); go('home'); toast('Walk deleted');
+  }
+  else if(act === 'applyupdate'){ await flush(); if(S.updateReady) S.updateReady.postMessage('SKIP_WAITING'); }
+  else if(act === 'teamtpl'){
+    if(!navigator.onLine){ toast('Connect to signal to load the team checklist.'); return; }
+    const pass = await DB.get('meta', 'pass');
+    if(pass) await syncTeamTemplate(pass); else { S.needPass = true; S.passMsg = 'Enter the team passcode to switch back to the team checklist.'; renderHome(); }
+  }
+  else if(act === 'pdf') makePDF(b);
+  else if(act === 'xlsx') makeXLSX(b);
+  else if(act === 'allphotos') exportPhotos(S.walk.items, b, $('#repMsg'));
+  else if(act === 'itemphotos') exportPhotos(S.walk.items.filter(x => x.id === S.itemId), b, null);
+});
+
+app.addEventListener('submit', async e => {
+  e.preventDefault();
+  if(e.target.id === 'unlockForm'){
+    const pass = $('#u-pass').value.trim(); if(!pass) return;
+    if(!navigator.onLine){ toast('Connect to signal once to unlock the checklist.'); return; }
+    await syncTeamTemplate(pass); return;
+  }
+  if(e.target.id === 'walkForm'){
+    const v = id => $('#' + id).value.trim();
+    const data = { stand:v('f-stand'), address:v('f-addr'), date:$('#f-date').value || today(), gc:v('f-gc'), by:v('f-by'), attendees:v('f-att') };
+    if(S.view === 'new'){
+      const t = S.template;
+      const w = Object.assign({ id:uid(), created:Date.now(), updated:Date.now(), templateName:t.fileName,
+        divisions:t.divisions, resps:t.resps, locations:[...t.locations],
+        items: t.items.map((x, i) => ({ id:'i' + i, no:x.no, item:x.item, division:x.division, location:x.location, resp:x.resp, status:'', fa:false, notes:'', photos:[] })) }, data);
+      w.locations = orderLocs([...w.locations, ...w.items.map(i => i.location), 'MISC.']).filter(l => w.items.some(i => i.location === l) || l === 'MISC.');
+      S.walk = w; S.walks.push(w); await DB.put('walks', w.id, w);
+      S.filter='all'; S.loc='all'; S.q=''; S.scroll=0; go('walk'); wake();
+    } else {
+      Object.assign(S.walk, data); saveWalk(true); go('walk',{keepScroll:true}); toast('Details saved');
+    }
+  } else if(e.target.id === 'addForm'){
+    const text = $('#a-text').value.trim(); if(!text) return;
+    const w = S.walk;
+    const maxNo = Math.max(0, ...w.items.map(i => parseInt(i.no, 10) || 0));
+    const it = { id:'c' + uid(), no:String(maxNo + 1), item:text, division:$('#a-div').value, location:$('#a-loc').value, resp:$('#a-resp').value, status:'open', fa:false, notes:'', photos:[], custom:true };
+    w.items.push(it); saveWalk(true); S.itemId = it.id; go('item');
+  }
+});
+
+app.addEventListener('input', e => {
+  const id = e.target.id;
+  if(id === 'q'){ S.q = e.target.value.trim(); renderList(); return; }
+  if(S.view === 'item'){
+    const it = S.walk.items.find(x => x.id === S.itemId); if(!it) return;
+    if(id === 'i-notes'){ it.notes = e.target.value; saveWalk(); }
+    if(id === 'i-text'){ it.item = e.target.value; saveWalk(); }
+  }
+});
+app.addEventListener('change', async e => {
+  const id = e.target.id;
+  if(id === 'locSel'){ S.loc = e.target.value; renderList(); window.scrollTo(0,0); }
+  else if(id === 'i-resp' || id === 'i-fa'){
+    const it = S.walk.items.find(x => x.id === S.itemId);
+    if(id === 'i-resp') it.resp = e.target.value; else it.fa = e.target.checked;
+    saveWalk();
+  }
+  else if(id === 'tplFile' || id === 'genFile'){
+    const f = e.target.files && e.target.files[0]; e.target.value = ''; if(!f) return;
+    if(!window.XLSX){ toast('The Excel reader did not load.'); return; }
+    let t;
+    try{ t = parseTemplate(XLSX.read(await f.arrayBuffer(), {type:'array'}), f.name); }
+    catch(err){ toast(err && err.message ? err.message : 'Could not read that file.'); return; }
+    if(id === 'tplFile'){
+      t.local = true; S.template = t; S.needPass = false; await DB.put('meta', 'template', t);
+      renderHome(); toast(`Loaded ${t.items.length} items for this phone`);
+    } else {
+      const pass = ($('#g-pass').value || '').trim();
+      if(pass.length < 8){ toast('Enter a passcode of at least 8 characters first.'); return; }
+      try{
+        const enc = await encryptTemplate(t, pass);
+        showFileReady('template.enc.json', new Blob([JSON.stringify(enc)], {type:'application/json'}),
+          'Upload this file to the GitHub repo, replacing template.enc.json. Share the passcode with the team separately, not in the same message.');
+      }catch(err){ toast('Could not build the template file.'); }
+    }
+  }
+  else if(id === 'camIn' || id === 'libIn'){
+    const files = [...(e.target.files || [])]; e.target.value = '';
+    if(!files.length) return;
+    const it = S.walk.items.find(x => x.id === S.itemId);
+    toast(files.length > 1 ? `Adding ${files.length} photos…` : 'Adding photo…');
+    let added = null;
+    for(const f of files){
+      try{
+        const p = await processPhoto(f); p.walkId = S.walk.id; p.itemId = it.id;
+        await DB.put('photos', p.id, p); it.photos.push(p.id); added = p;
+      }catch(err){ toast('One photo could not be read.'); }
+    }
+    saveWalk(true);
+    if(S.view === 'item' && S.itemId === it.id) rerenderItem();
+    if(added && files.length === 1) openAnnotator(added);
+  }
+});
+
+/* ---------- photos ---------- */
+function loadImage(src){ return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }); }
+async function processPhoto(file){
+  const url = URL.createObjectURL(file);
+  try{
+    const im = await loadImage(url);
+    const max = 1600; const sc = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+    const w = Math.round(im.naturalWidth * sc), h = Math.round(im.naturalHeight * sc);
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    cv.getContext('2d').drawImage(im, 0, 0, w, h);
+    return { id:'p' + uid(), src: cv.toDataURL('image/jpeg', 0.82), ann:null, shapes:[], w, h, taken:Date.now() };
+  } finally { URL.revokeObjectURL(url); }
+}
+
+/* ---------- annotator ---------- */
+const COLORS = [['#ff2d2d','Red'],['#ffd400','Yellow'],['#ffffff','White'],['#1e90ff','Blue']];
+async function openAnnotator(photo){
+  const root = $('#annRoot');
+  const img = await loadImage(photo.src);
+  let shapes = JSON.parse(JSON.stringify(photo.shapes || []));
+  let tool = 'arrow', color = COLORS[0][0], cur = null;
+  const lw = Math.max(4, Math.round(Math.max(photo.w, photo.h) / 110));
+  root.innerHTML = `<div class="ann" role="dialog" aria-label="Mark up photo">
+    <div class="ann-hint">Draw on the photo to point out the issue</div>
+    <div class="ann-stage"><canvas id="annCv" width="${photo.w}" height="${photo.h}"></canvas></div>
+    <div class="ann-bar" id="annTools">
+      <button data-t="arrow" aria-label="Arrow">${I.arrow}</button>
+      <button data-t="circle" aria-label="Circle">${I.circle}</button>
+      <button data-t="box" aria-label="Box">${I.box}</button>
+      <button data-t="pen" aria-label="Freehand">${I.pen}</button>
+      <span class="sep"></span>
+      ${COLORS.map(([c,n]) => `<button class="sw" data-c="${c}" aria-label="${n}"><i style="background:${c}"></i></button>`).join('')}
+    </div>
+    <div class="ann-bar">
+      <button data-a="undo">${I.undo}<span>Undo</span></button>
+      <button data-a="clear">Clear</button>
+      <button data-a="cancel">Cancel</button>
+      <button data-a="save" class="save">Save</button>
+    </div>
+  </div>`;
+  document.body.style.overflow = 'hidden';
+  const cv = $('#annCv'); const ctx = cv.getContext('2d');
+  const sync = () => {
+    root.querySelectorAll('[data-t]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === tool)));
+    root.querySelectorAll('[data-c]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.c === color)));
+  };
+  function drawShape(s){
+    ctx.save();
+    ctx.strokeStyle = s.color; ctx.fillStyle = s.color; ctx.lineWidth = s.w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = s.w * 1.2;
+    ctx.beginPath();
+    if(s.type === 'pen'){
+      s.pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke();
+    } else if(s.type === 'arrow'){
+      const [x1,y1] = s.a, [x2,y2] = s.b; const ang = Math.atan2(y2-y1, x2-x1); const hl = s.w * 4.5;
+      ctx.moveTo(x1,y1); ctx.lineTo(x2 - Math.cos(ang)*hl*0.6, y2 - Math.sin(ang)*hl*0.6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x2,y2);
+      ctx.lineTo(x2 - hl*Math.cos(ang - 0.45), y2 - hl*Math.sin(ang - 0.45));
+      ctx.lineTo(x2 - hl*Math.cos(ang + 0.45), y2 - hl*Math.sin(ang + 0.45));
+      ctx.closePath(); ctx.fill();
+    } else if(s.type === 'circle'){
+      const cx = (s.a[0]+s.b[0])/2, cy = (s.a[1]+s.b[1])/2;
+      ctx.ellipse(cx, cy, Math.max(1, Math.abs(s.b[0]-s.a[0])/2), Math.max(1, Math.abs(s.b[1]-s.a[1])/2), 0, 0, Math.PI*2); ctx.stroke();
+    } else if(s.type === 'box'){
+      ctx.strokeRect(Math.min(s.a[0],s.b[0]), Math.min(s.a[1],s.b[1]), Math.abs(s.b[0]-s.a[0]), Math.abs(s.b[1]-s.a[1]));
+    }
+    ctx.restore();
+  }
+  function draw(){ ctx.clearRect(0,0,cv.width,cv.height); ctx.drawImage(img, 0, 0, cv.width, cv.height); shapes.forEach(drawShape); if(cur) drawShape(cur); }
+  const pos = e => { const r = cv.getBoundingClientRect(); return [ (e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height ]; };
+  cv.addEventListener('pointerdown', e => {
+    e.preventDefault(); try{ cv.setPointerCapture(e.pointerId); }catch(_){}
+    const p = pos(e);
+    cur = tool === 'pen' ? { type:'pen', color, w:lw, pts:[p] } : { type:tool, color, w:lw, a:p, b:p };
+    draw();
+  });
+  cv.addEventListener('pointermove', e => {
+    if(!cur) return; e.preventDefault(); const p = pos(e);
+    if(cur.type === 'pen') cur.pts.push(p); else cur.b = p;
+    draw();
+  });
+  const end = () => {
+    if(!cur) return;
+    const big = cur.type === 'pen' ? cur.pts.length > 1 : Math.hypot(cur.b[0]-cur.a[0], cur.b[1]-cur.a[1]) > lw * 2;
+    if(big) shapes.push(cur); cur = null; draw();
+  };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  const close = () => { root.innerHTML = ''; document.body.style.overflow = ''; };
+  root.onclick = async e => {
+    const b = e.target.closest('button'); if(!b) return;
+    if(b.dataset.t){ tool = b.dataset.t; sync(); }
+    else if(b.dataset.c){ color = b.dataset.c; sync(); }
+    else if(b.dataset.a === 'undo'){ shapes.pop(); draw(); }
+    else if(b.dataset.a === 'clear'){ shapes = []; draw(); }
+    else if(b.dataset.a === 'cancel') close();
+    else if(b.dataset.a === 'save'){
+      cur = null; draw();
+      photo.shapes = shapes; photo.ann = shapes.length ? cv.toDataURL('image/jpeg', 0.85) : null;
+      await DB.put('photos', photo.id, photo);
+      close();
+      const it = S.walk && S.walk.items.find(x => x.id === S.itemId);
+      if(it && S.view === 'item') renderPhotos(it);
+      toast(shapes.length ? 'Markup saved' : 'Photo saved');
+    }
+  };
+  sync(); draw();
+}
+
+/* ---------- export ---------- */
+const MIME = { pdf:'application/pdf', xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', zip:'application/zip', jpg:'image/jpeg', json:'application/json' };
+function showFileReady(filename, data, note){
+  const ext = filename.split('.').pop().toLowerCase();
+  const blob = data instanceof Blob && data.type ? data : new Blob([data], { type: MIME[ext] || 'application/octet-stream' });
+  const file = new File([blob], filename, { type: blob.type });
+  let canShare = false;
+  try{ canShare = !!(navigator.canShare && navigator.canShare({ files:[file] })); }catch(e){}
+  const root = $('#sheetRoot');
+  const kb = blob.size > 1048576 ? (blob.size/1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(blob.size/1024)) + ' KB';
+  root.innerHTML = `<div class="sheet-back" data-s="close"><div class="sheet" role="dialog" aria-label="File ready">
+    <div class="eyebrow">File ready</div>
+    <div class="fname">${esc(filename)} <span class="muted mono">${kb}</span></div>
+    <div class="note">${esc(note || (canShare ? 'Share opens your phone\'s share options: pick Mail to email it, or Dropbox, Files or OneDrive to save it.' : 'Save it to this device, then attach it to an email or upload it.'))}</div>
+    ${canShare ? `<button class="btn primary block" data-s="share">${I.share}<span>Share</span></button>` : ''}
+    <button class="btn block ${canShare ? '' : 'primary'}" data-s="save">${I.file}<span>Save to this device</span></button>
+    <button class="btn block" data-s="close">Close</button>
+  </div></div>`;
+  const close = () => { root.innerHTML = ''; root.onclick = null; };
+  root.onclick = async e => {
+    const b = e.target.closest('[data-s]'); if(!b) return;
+    if(b.classList.contains('sheet-back') && e.target !== b) return;
+    const a = b.dataset.s;
+    if(a === 'close') close();
+    else if(a === 'share'){
+      try{ await navigator.share({ files:[file], title: filename }); close(); }
+      catch(err){ if(err && err.name !== 'AbortError') toast('Sharing failed. Use Save to this device instead.'); }
+    } else if(a === 'save'){
+      const url = URL.createObjectURL(blob); const link = document.createElement('a');
+      link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000); toast('Saved'); close();
+    }
+  };
+}
+async function saveFile(filename, data, msgEl){
+  showFileReady(filename, data);
+  if(msgEl) msgEl.textContent = `${filename} is ready.`;
+  return true;
+}
+const safeName = s => String(s || 'Stand').replace(/[\\/:*?"<>|]+/g, '-').trim();
+function dataURLBytes(u){ const b = atob(u.slice(u.indexOf(',') + 1)); const a = new Uint8Array(b.length); for(let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
+async function exportPhotos(items, btn, msgEl){
+  const out = msgEl || { set textContent(v){ toast(v); } };
+  const w = S.walk;
+  const list = [];
+  for(const loc of w.locations) for(const it of items.filter(x => x.location === loc)){
+    const recs = (await Promise.all(it.photos.map(id => DB.get('photos', id)))).filter(Boolean);
+    const base = safeName(`#${it.no || '-'} ${it.item}`).slice(0, 60).trim();
+    recs.forEach((p, i) => {
+      const n = recs.length > 1 ? ` (${i + 1})` : '';
+      if(p.ann){ list.push({ name: `${safeName(loc)}/${base}${n} - marked up.jpg`, url: p.ann }); list.push({ name: `${safeName(loc)}/${base}${n} - original.jpg`, url: p.src }); }
+      else list.push({ name: `${safeName(loc)}/${base}${n}.jpg`, url: p.src });
+    });
+  }
+  if(!list.length){ out.textContent = 'No photos to export.'; return; }
+  btn.disabled = true;
+  try{
+    const prefix = `${safeName(w.stand)} - ${w.date}`;
+    if(list.length === 1){
+      await saveFile(`${prefix} - ${list[0].name.split('/').pop()}`, new Blob([dataURLBytes(list[0].url)]), msgEl);
+    } else {
+      if(!window.JSZip){ out.textContent = 'The zip builder did not load. Check the connection and reopen the page.'; return; }
+      out.textContent = `Packing ${list.length} photos…`;
+      const zip = new window.JSZip(); const root = zip.folder(`${prefix} punch photos`);
+      list.forEach(f => root.file(f.name, dataURLBytes(f.url), { binary:true }));
+      const blob = await zip.generateAsync({ type:'blob', compression:'STORE' });
+      const scope = items.length === 1 ? ` - item ${safeName(items[0].no || '')}` : '';
+      await saveFile(`${prefix}${scope} - photos.zip`, blob, msgEl);
+    }
+  }catch(err){ out.textContent = 'Could not export the photos.'; }
+  finally{ btn.disabled = false; }
+}
+
+async function makePDF(btn){
+  const msg = $('#repMsg');
+  if(!window.jspdf){ msg.textContent = 'The PDF builder did not load. Check the connection and reopen the page.'; return; }
+  btn.disabled = true; msg.textContent = 'Building PDF…';
+  try{
+    const w = S.walk; const c = counts(w);
+    const incTodo = $('#r-todo').checked, incDone = $('#r-done').checked;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'pt', format:'letter' });
+    const W = 612, H = 792, M = 40, CW = W - 2*M;
+    let y = M;
+    const ink = [21,33,43], muted = [91,104,114], red = [194,50,31], green = [31,122,63], grey = [111,124,134], line = [211,218,222];
+    const ensure = h => { if(y + h > H - M - 16){ doc.addPage(); y = M; } };
+    const text = (s, x, size, style, color, maxW) => {
+      doc.setFont('helvetica', style || 'normal'); doc.setFontSize(size); doc.setTextColor(...(color || ink));
+      const lines = doc.splitTextToSize(String(s ?? ''), maxW || CW);
+      const lh = size * 1.25;
+      lines.forEach(l => { ensure(lh); doc.text(l, x, y + size); y += lh; });
+    };
+    const rule = () => { doc.setDrawColor(...line); doc.setLineWidth(0.8); doc.line(M, y, W - M, y); y += 10; };
+
+    // Header
+    text('PUNCH WALK REPORT', M, 10, 'bold', muted);
+    text(w.stand || 'Untitled stand', M, 22, 'bold');
+    if(w.address) text(w.address, M, 11, 'normal', muted);
+    y += 6;
+    const meta = [['Walk date', fmtDate(w.date)], ['General contractor', w.gc], ['Walked by', w.by], ['Attendees', w.attendees], ['Report generated', new Date().toLocaleString()]].filter(r => r[1]);
+    meta.forEach(([k,v]) => {
+      ensure(14); doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(...muted); doc.text(k.toUpperCase(), M, y + 9.5);
+      const save = y;
+      doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(...ink);
+      const lines = doc.splitTextToSize(String(v), CW - 130);
+      lines.forEach((l,i) => { doc.text(l, M + 130, save + 10 + i*13); });
+      y = save + Math.max(1, lines.length) * 13 + 2;
+    });
+    y += 8;
+
+    // Summary boxes
+    ensure(56);
+    const boxes = [['Items', c.total, ink], ['Complete', c.complete, green], ['Not complete', c.open, red], ['N/A', c.na, grey], ['Not checked', c.todo, muted]];
+    const bw = (CW - 4*8) / 5;
+    boxes.forEach(([k,n,col], i) => {
+      const x = M + i*(bw + 8);
+      doc.setDrawColor(...line); doc.setLineWidth(0.8); doc.roundedRect(x, y, bw, 46, 4, 4, 'S');
+      doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(...col); doc.text(String(n), x + 8, y + 22);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...muted); doc.text(k, x + 8, y + 37);
+    });
+    y += 60;
+
+    // Open by responsible party
+    const byResp = {};
+    w.items.filter(i => i.status === 'open').forEach(i => { const k = i.resp || 'Unassigned'; byResp[k] = (byResp[k]||0) + 1; });
+    if(Object.keys(byResp).length){
+      text('Open items by responsible party', M, 12, 'bold'); y += 2;
+      Object.entries(byResp).sort((a,b)=>b[1]-a[1]).forEach(([k,n]) => {
+        ensure(14); doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(...ink);
+        doc.text(k, M, y + 10); doc.text(String(n), W - M, y + 10, { align:'right' }); y += 15;
+      });
+      y += 6;
+    }
+
+    const ordered = st => { const out = []; w.locations.forEach(l => w.items.forEach(it => { if(it.location === l && st(it)) out.push(it); })); return out; };
+
+    // Open items with photos
+    const open = ordered(i => i.status === 'open');
+    rule();
+    text(`Not complete (${open.length})`, M, 15, 'bold', red); y += 4;
+    if(!open.length) text('No open items.', M, 10.5, 'normal', muted);
+    let lastLoc = null;
+    for(const it of open){
+      if(it.location !== lastLoc){ ensure(40); y += 4; text(it.location.toUpperCase(), M, 10, 'bold', muted); lastLoc = it.location; }
+      ensure(48);
+      doc.setFillColor(...red); doc.rect(M, y + 2, 3, 12, 'F');
+      text(`#${it.no || '—'}   ${it.item}`, M + 10, 11, 'bold', ink, CW - 10);
+      text(`Responsible: ${it.resp || 'Unassigned'}   ·   Division: ${it.division || '—'}`, M + 10, 9.5, 'normal', muted, CW - 10);
+      if(it.notes) text(it.notes, M + 10, 10.5, 'normal', ink, CW - 10);
+      if(it.photos.length){
+        const recs = (await Promise.all(it.photos.map(id => DB.get('photos', id)))).filter(Boolean);
+        const colW = (CW - 10 - 10) / 2, maxH = 200;
+        y += 4;
+        for(let i = 0; i < recs.length; i += 2){
+          const pair = recs.slice(i, i+2).map(p => { const s = Math.min(colW / p.w, maxH / p.h); return { p, w:p.w*s, h:p.h*s }; });
+          const rh = Math.max(...pair.map(q => q.h));
+          ensure(rh + 8);
+          pair.forEach((q, j) => { doc.addImage(q.p.ann || q.p.src, 'JPEG', M + 10 + j*(colW + 10), y, q.w, q.h, undefined, 'FAST'); });
+          y += rh + 8;
+        }
+      }
+      y += 8;
+    }
+
+    const compact = (title, list, color, showStatus) => {
+      ensure(60); y += 6; rule();
+      text(`${title} (${list.length})`, M, 15, 'bold', color); y += 4;
+      let last = null;
+      list.forEach(it => {
+        if(it.location !== last){ ensure(30); y += 3; text(it.location.toUpperCase(), M, 9.5, 'bold', muted); last = it.location; }
+        const suffix = showStatus ? `   [${STATUS[it.status]}${it.fa ? ', final approved' : ''}]` : '';
+        text(`#${it.no || '—'}   ${it.item}   — ${it.resp || 'Unassigned'}${suffix}`, M + 10, 9.5, 'normal', ink, CW - 10);
+        if(it.notes) text(`Note: ${it.notes}`, M + 22, 9, 'italic', muted, CW - 22);
+      });
+    };
+    if(incTodo) compact('Not checked', ordered(i => !i.status), muted, false);
+    if(incDone) compact('Complete and N/A', ordered(i => i.status === 'complete' || i.status === 'na'), green, true);
+
+    // Footer
+    const pages = doc.getNumberOfPages();
+    for(let i = 1; i <= pages; i++){
+      doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...muted);
+      doc.text(`${w.stand || ''}  ·  Punch walk ${fmtDate(w.date)}`, M, H - 22);
+      doc.text(`Page ${i} of ${pages}`, W - M, H - 22, { align:'right' });
+    }
+    const blob = doc.output('blob');
+    await saveFile(`Punch Walk - ${safeName(w.stand)} - ${w.date}.pdf`, blob, msg);
+  }catch(err){ msg.textContent = 'Could not build the PDF. ' + (err && err.message ? err.message : ''); }
+  btn.disabled = false;
+}
+
+async function makeXLSX(btn){
+  const msg = $('#repMsg');
+  if(!window.XLSX){ msg.textContent = 'The Excel writer did not load.'; return; }
+  btn.disabled = true;
+  try{
+    const w = S.walk;
+    const rows = [
+      ['Punch Walk', w.stand || ''], ['Address', w.address || ''], ['Walk date', w.date || ''], ['General contractor', w.gc || ''], ['Walked by', w.by || ''], ['Attendees', w.attendees || ''], [],
+      ['NO','Item','Division','Location','Resp.','Complete','Not Complete','Non Applicable','Final Approval','Notes','Photos']
+    ];
+    w.locations.forEach(l => w.items.filter(i => i.location === l).forEach(i => rows.push([
+      i.no, i.item, i.division, i.location, i.resp, i.status === 'complete' ? 'x' : '', i.status === 'open' ? 'x' : '', i.status === 'na' ? 'x' : '', i.fa ? 'x' : '', i.notes || '', i.photos.length || ''
+    ])));
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:6},{wch:60},{wch:14},{wch:22},{wch:16},{wch:10},{wch:13},{wch:15},{wch:14},{wch:50},{wch:8}];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Punch Walk');
+    const out = XLSX.write(wb, { type:'array', bookType:'xlsx' });
+    await saveFile(`Punch Walk - ${safeName(w.stand)} - ${w.date}.xlsx`, new Blob([out]), msg);
+  }catch(err){ msg.textContent = 'Could not build the Excel file.'; }
+  btn.disabled = false;
+}
+
+/* ---------- misc ---------- */
+let lock = null;
+async function wake(){ try{ if('wakeLock' in navigator && !lock){ lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', () => { lock = null; }); } }catch(e){ lock = null; } }
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible' && S.walk) wake(); });
+
+async function loadWalks(){ S.walks = (await DB.all('walks')) || []; }
+async function init(){
+  renderHome();
+  await DB.open();
+  S.template = (await DB.get('meta', 'template')) || null;
+  await loadWalks();
+  renderHome();
+  await syncTeamTemplate();
+  if(S.view === 'home') renderHome();
+  registerSW();
+}
+function registerSW(){
+  if(!('serviceWorker' in navigator) || location.protocol === 'file:') return;
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    const flag = w => { S.updateReady = w; if(S.view === 'home') renderHome(); };
+    if(reg.waiting && navigator.serviceWorker.controller) flag(reg.waiting);
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing; if(!nw) return;
+      nw.addEventListener('statechange', () => { if(nw.state === 'installed' && navigator.serviceWorker.controller) flag(nw); });
+    });
+    setInterval(() => { if(navigator.onLine) reg.update().catch(() => {}); }, 3600000);
+  }).catch(() => {});
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; flush().then(() => location.reload()); });
+}
+/* ---- team template: encrypted file in the repo, unlocked with a passcode ---- */
+const b64 = u8 => { let s = ''; for(let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); };
+const unb64 = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+async function deriveKey(pass, salt, iter){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:iter, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+async function encryptTemplate(t, pass){
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), iter = 310000;
+  const key = await deriveKey(pass, salt, iter);
+  const clean = Object.assign({}, t); delete clean.local; clean.loaded = Date.now();
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(clean))));
+  return { format:'punch-walk-template', v:1, kdf:'PBKDF2-SHA256', iter, cipher:'AES-256-GCM', updated: clean.loaded, salt:b64(salt), iv:b64(iv), data:b64(ct) };
+}
+async function decryptTemplate(enc, pass){
+  const key = await deriveKey(pass, unb64(enc.salt), enc.iter);
+  const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv:unb64(enc.iv) }, key, unb64(enc.data));
+  const t = JSON.parse(new TextDecoder().decode(pt));
+  if(!t || !Array.isArray(t.items) || !t.items.length) throw new Error('empty');
+  t.encUpdated = enc.updated; return t;
+}
+async function fetchEnc(){
+  const r = await fetch('template.enc.json', { cache:'no-store' });
+  if(!r.ok) throw new Error('missing');
+  return r.json();
+}
+async function syncTeamTemplate(passTry){
+  const pass = passTry || await DB.get('meta', 'pass');
+  if(!pass){ if(!S.template){ S.needPass = true; } return; }
+  let enc;
+  try{ enc = await fetchEnc(); }catch(e){ if(passTry){ toast('Could not reach the checklist file. Connect to signal and try again.'); } return; }
+  if(!passTry && S.template && !S.template.local && S.template.encUpdated === enc.updated) return;
+  if(!passTry && S.template && S.template.local) return;
+  try{
+    const t = await decryptTemplate(enc, pass);
+    S.template = t; S.needPass = false; S.passMsg = '';
+    await DB.put('meta', 'template', t); await DB.put('meta', 'pass', pass);
+    if(passTry) toast(`Checklist loaded: ${t.items.length} items`); else if(S.view === 'home') toast('Team checklist updated');
+  }catch(e){
+    if(passTry){ toast('That passcode did not work.'); }
+    else { S.needPass = true; S.passMsg = 'The team checklist was updated with a new passcode. Enter it to get the latest list. You can keep using the current list until then.'; }
+  }
+  if(S.view === 'home') renderHome();
+}
+window.addEventListener('online', () => { S.online = true; syncTeamTemplate().then(() => { if(S.view === 'home') renderHome(); }); });
+window.addEventListener('offline', () => { S.online = false; if(S.view === 'home') renderHome(); toast('No signal. Your work is still saving on this phone.'); });
+init();
+})();
+</script>
+</body>
+</html>

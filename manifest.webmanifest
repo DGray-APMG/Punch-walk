@@ -1,0 +1,16 @@
+{
+  "name": "Punch Walk",
+  "short_name": "Punch Walk",
+  "description": "Field punch walks for 7 Brew stand hand-overs",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef1f3",
+  "theme_color": "#0b5d8a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
