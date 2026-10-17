@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -184,6 +184,22 @@ details.more summary{cursor:pointer;font-weight:600;min-height:40px;display:flex
 details.more .stack{padding-top:8px}
 .update{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--accent);color:var(--accent-ink);display:flex;gap:10px;align-items:center;justify-content:space-between;padding-block:8px}
 .update button{background:var(--accent-ink);color:var(--accent);border:0;border-radius:8px;min-height:38px;padding:0 12px;font-weight:700}
+.presets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.presets .chip{justify-content:center;padding:6px 4px;font-size:13.5px}
+.chips.wrap{flex-wrap:wrap;overflow:visible}
+details.more summary{justify-content:space-between;gap:10px}
+details.more summary .note{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%}
+.checks{display:flex;flex-direction:column;max-height:280px;overflow:auto;padding-top:4px}
+.checks .check{min-height:40px}
+.linkbtn{background:none;border:0;color:var(--accent);font-weight:600;min-height:40px;padding:0 4px}
+.prev{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.prev-group{font-family:var(--font-display);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:14px;padding:10px 12px 6px;background:var(--surface-2);border-top:1px solid var(--line)}
+.prev-group:first-child{border-top:0}
+.prev-row{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-top:1px solid var(--line);font-size:14.5px;line-height:1.3}
+.prev-row .no{font-size:12px;color:var(--muted);min-width:34px;padding-top:2px}
+.prev-row .meta{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+.prev-row .grow{overflow-wrap:anywhere}
+.pill{width:10px;height:10px;border-radius:50%;flex:none;margin-top:5px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:60;max-width:calc(100% - 32px);font-size:15px}
 .stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
 .stat div{border-radius:12px;padding:10px 12px;background:var(--surface-2)}
@@ -193,14 +209,6 @@ details.more .stack{padding-top:8px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
-
-<!--[if gte mso 9]><xml>
-<mso:CustomDocumentProperties>
-<mso:_dlc_DocId msdt:dt="string">AUY3WPNZJK3E-950499291-21936</mso:_dlc_DocId>
-<mso:_dlc_DocIdItemGuid msdt:dt="string">c8d9ebc1-7d56-4e27-9649-04ed7deaac35</mso:_dlc_DocIdItemGuid>
-<mso:_dlc_DocIdUrl msdt:dt="string">https://pacificbells.sharepoint.com/Development/7Brew/_layouts/15/DocIdRedir.aspx?ID=AUY3WPNZJK3E-950499291-21936, AUY3WPNZJK3E-950499291-21936</mso:_dlc_DocIdUrl>
-</mso:CustomDocumentProperties>
-</xml><![endif]-->
 </head>
 <body>
 <div id="app"></div>
@@ -597,33 +605,185 @@ function renderAddItem(){
   </form>`;
 }
 
+/* ---------- report: filters, sorting, preview ---------- */
+const ST_ORDER = { open:0, todo:1, complete:2, na:3 };
+const ST_LABEL = { open:'Not complete', todo:'Not checked', complete:'Complete', na:'N/A' };
+const ST_TOKEN = { open:'--bad', todo:'--muted', complete:'--ok', na:'--na' };
+const SORTS = { location:'Location', number:'Item number', resp:'Responsible party', status:'Status', division:'Division' };
+const stKey = it => it.status || 'todo';
+const numOf = it => { const n = parseFloat(String(it.no ?? '').replace(/[^0-9.]/g, '')); return isNaN(n) ? Infinity : n; };
+const respOf = it => it.resp || 'Unassigned';
+const divOf = it => it.division || 'No division';
+function defaultRepOpts(){ return { st:{ open:true, todo:true, complete:true, na:true }, resp:[], loc:[], div:[], noFrom:'', noTo:'', photosOnly:false, notesOnly:false, q:'', sort:'location', photos:true }; }
+function repOpts(){
+  const w = S.walk, d = defaultRepOpts();
+  if(!w.reportOpts || typeof w.reportOpts !== 'object') w.reportOpts = d;
+  const o = w.reportOpts;
+  Object.keys(d).forEach(k => { if(o[k] === undefined) o[k] = d[k]; });
+  o.st = Object.assign(d.st, o.st || {});
+  ['resp','loc','div'].forEach(k => { if(!Array.isArray(o[k])) o[k] = []; });
+  if(!SORTS[o.sort]) o.sort = 'location';
+  return o;
+}
+function reportItems(w, o){
+  const from = String(o.noFrom).trim() === '' ? null : Number(o.noFrom);
+  const to = String(o.noTo).trim() === '' ? null : Number(o.noTo);
+  const q = (o.q || '').trim().toLowerCase();
+  const list = w.items.filter(it => {
+    if(!o.st[stKey(it)]) return false;
+    if(o.resp.length && !o.resp.includes(respOf(it))) return false;
+    if(o.loc.length && !o.loc.includes(it.location)) return false;
+    if(o.div.length && !o.div.includes(divOf(it))) return false;
+    const n = numOf(it);
+    if(from !== null && !isNaN(from) && !(n >= from)) return false;
+    if(to !== null && !isNaN(to) && !(n <= to)) return false;
+    if(o.photosOnly && !it.photos.length) return false;
+    if(o.notesOnly && !(it.notes || '').trim()) return false;
+    if(q && !(`${it.item} ${it.notes || ''} ${it.no}`).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const li = l => { const i = w.locations.indexOf(l); return i < 0 ? 999 : i; };
+  const byNum = (a, b) => { const x = numOf(a), y = numOf(b); return x === y ? 0 : x < y ? -1 : 1; };
+  const primary = {
+    location: (a, b) => li(a.location) - li(b.location),
+    number: () => 0,
+    resp: (a, b) => respOf(a).localeCompare(respOf(b)),
+    status: (a, b) => ST_ORDER[stKey(a)] - ST_ORDER[stKey(b)],
+    division: (a, b) => divOf(a).localeCompare(divOf(b))
+  }[o.sort] || (() => 0);
+  const idx = new Map(w.items.map((it, i) => [it, i]));
+  list.sort((a, b) => primary(a, b) || (o.sort === 'number' ? 0 : li(a.location) - li(b.location)) || byNum(a, b) || (idx.get(a) - idx.get(b)));
+  return list;
+}
+function groupOf(o, it){
+  if(o.sort === 'location') return it.location;
+  if(o.sort === 'resp') return respOf(it);
+  if(o.sort === 'status') return ST_LABEL[stKey(it)];
+  if(o.sort === 'division') return divOf(it);
+  return null;
+}
+function describeFilters(o){
+  const parts = [];
+  const sts = Object.keys(ST_LABEL).filter(k => o.st[k]);
+  parts.push(sts.length === 4 ? 'All statuses' : sts.length ? sts.map(k => ST_LABEL[k]).join(', ') : 'No statuses selected');
+  if(o.resp.length) parts.push('Responsible: ' + o.resp.join(', '));
+  if(o.loc.length) parts.push('Location: ' + o.loc.join(', '));
+  if(o.div.length) parts.push('Division: ' + o.div.join(', '));
+  const f = String(o.noFrom).trim(), t = String(o.noTo).trim();
+  if(f || t) parts.push(`Item # ${f || 'start'} to ${t || 'end'}`);
+  if(o.photosOnly) parts.push('With photos');
+  if(o.notesOnly) parts.push('With notes');
+  if((o.q || '').trim()) parts.push(`Text contains "${o.q.trim()}"`);
+  parts.push('Sorted by ' + SORTS[o.sort].toLowerCase());
+  return parts.join(' · ');
+}
+function checkList(group, values, selected, labelFn){
+  return values.map(v => `<label class="check"><input type="checkbox" data-g="${group}" value="${esc(v)}" ${selected.includes(v) ? 'checked' : ''}> <span>${esc(labelFn ? labelFn(v) : v)}</span></label>`).join('');
+}
 function renderReport(){
-  const w = S.walk; const c = counts(w);
-  const byResp = {};
-  w.items.filter(i => i.status === 'open').forEach(i => { const k = i.resp || 'Unassigned'; byResp[k] = (byResp[k]||0) + 1; });
+  const w = S.walk, o = repOpts(), all = counts(w);
+  const resps = [...new Set(w.items.map(respOf))].sort();
+  const locs = w.locations.filter(l => w.items.some(i => i.location === l));
+  const divs = [...new Set(w.items.map(divOf))].sort();
+  const cnt = k => w.items.filter(i => stKey(i) === k).length;
   app.innerHTML = `
   <header class="bar"><div class="bar-in pad"><button class="iconbtn" data-act="backwalk" aria-label="Back">${I.back}</button><div class="grow"><div class="title">Report</div><div class="sub">${esc(w.stand)} · ${esc(fmtDate(w.date))}</div></div></div></header>
-  <div class="pad section stack">
-    <div class="stat">
-      <div><b>${c.total}</b><span>Items</span></div>
-      <div class="s-ok"><b>${c.complete}</b><span>Complete</span></div>
-      <div class="s-bad"><b>${c.open}</b><span>Not complete</span></div>
-      <div class="s-na"><b>${c.na}</b><span>N/A</span></div>
-      <div><b>${c.todo}</b><span>Not checked</span></div>
-    </div>
-    ${Object.keys(byResp).length ? `<div class="panel stack"><div class="eyebrow">Open items by responsible party</div>${Object.entries(byResp).sort((a,b)=>b[1]-a[1]).map(([k,n]) => `<div class="rowx" style="justify-content:space-between"><span>${esc(k)}</span><span class="mono">${n}</span></div>`).join('')}</div>` : ''}
-    ${c.todo ? `<div class="banner">${c.todo} items are not checked yet. They can be listed in the report so nothing is missed.</div>` : ''}
+  <form id="repForm" class="pad section stack" autocomplete="off">
     <div class="panel stack">
-      <div class="eyebrow">PDF report contents</div>
-      <label class="check"><input type="checkbox" id="r-open" checked disabled> Not complete items with notes and marked-up photos</label>
-      <label class="check"><input type="checkbox" id="r-todo" ${c.todo ? 'checked' : ''}> Items not checked</label>
-      <label class="check"><input type="checkbox" id="r-done"> Complete and N/A items</label>
-      <button class="btn primary block" data-act="pdf">${I.report}<span>Build PDF report</span></button>
-      <button class="btn block" data-act="xlsx">${I.file}<span>Build Excel punch list</span></button>
-      <button class="btn block" data-act="allphotos" ${c.photos ? '' : 'disabled'}>${I.share}<span>Share or save all photos (${c.photos})</span></button>
-      <div class="note" id="repMsg">Each file opens a Share option: pick Mail to email it, or Dropbox to save it there. Photos are packed into one .zip file, with marked-up and original copies.</div>
+      <div class="eyebrow">Include</div>
+      <div class="presets">
+        <button type="button" class="chip" data-r="preset" data-p="all">All items</button>
+        <button type="button" class="chip" data-r="preset" data-p="open">Open items</button>
+        <button type="button" class="chip" data-r="preset" data-p="complete">Complete</button>
+        <button type="button" class="chip" data-r="preset" data-p="na">N/A</button>
+      </div>
+      <div class="chips wrap" id="stChips">
+        ${['open','todo','complete','na'].map(k => `<button type="button" class="chip" data-r="st" data-k="${k}" aria-pressed="${!!o.st[k]}"><span class="dot" style="background:var(${ST_TOKEN[k]})"></span>${ST_LABEL[k]} <b>${cnt(k)}</b></button>`).join('')}
+      </div>
     </div>
-  </div>`;
+    <div class="panel stack">
+      <div class="rowx" style="justify-content:space-between"><div class="eyebrow">Filter</div><button type="button" class="linkbtn" data-r="clear">Clear filters</button></div>
+      <details class="more"><summary><span>Responsible party</span><span class="note" id="sum-resp"></span></summary><div class="checks">${checkList('resp', resps, o.resp)}</div></details>
+      <details class="more"><summary><span>Location</span><span class="note" id="sum-loc"></span></summary><div class="checks">${checkList('loc', locs, o.loc)}</div></details>
+      <details class="more"><summary><span>Division</span><span class="note" id="sum-div"></span></summary><div class="checks">${checkList('div', divs, o.div)}</div></details>
+      <div class="filters">
+        <label class="f"><span>Item # from</span><input type="text" inputmode="numeric" id="r-from" value="${esc(o.noFrom)}" placeholder="e.g. 1"></label>
+        <label class="f"><span>Item # to</span><input type="text" inputmode="numeric" id="r-to" value="${esc(o.noTo)}" placeholder="e.g. 50"></label>
+      </div>
+      <label class="f"><span>Text contains</span><input type="search" id="r-q" value="${esc(o.q)}" placeholder="Word in item or notes"></label>
+      <label class="check"><input type="checkbox" id="r-photosOnly" ${o.photosOnly ? 'checked' : ''}> Only items with photos</label>
+      <label class="check"><input type="checkbox" id="r-notesOnly" ${o.notesOnly ? 'checked' : ''}> Only items with notes</label>
+    </div>
+    <div class="panel stack">
+      <label class="f"><span>Sort and group by</span><select id="r-sort">${Object.entries(SORTS).map(([k,v]) => `<option value="${k}" ${o.sort===k?'selected':''}>${v}</option>`).join('')}</select></label>
+      <label class="check"><input type="checkbox" id="r-photos" ${o.photos ? 'checked' : ''}> Include photos in the PDF</label>
+    </div>
+    <div class="panel stack">
+      <div id="repSummary"></div>
+      <button type="button" class="btn primary block" data-r="pdf">${I.report}<span>Build PDF report</span></button>
+      <button type="button" class="btn block" data-r="xlsx">${I.file}<span>Build Excel punch list</span></button>
+      <button type="button" class="btn block" data-r="photos" id="r-photoBtn">${I.share}<span>Share or save photos</span></button>
+      <div class="note" id="repMsg">Each file opens a Share option: pick Mail to email it, or Dropbox to save it there. The PDF, Excel file and photos all use the filters and sort above.</div>
+    </div>
+    <div id="repPreview" class="stack"></div>
+  </form>`;
+  const form = $('#repForm');
+  form.addEventListener('submit', e => e.preventDefault());
+  form.addEventListener('click', e => {
+    const b = e.target.closest('[data-r]'); if(!b || b.disabled) return;
+    const r = b.dataset.r;
+    if(r === 'st'){ o.st[b.dataset.k] = !o.st[b.dataset.k]; repChanged(); }
+    else if(r === 'preset'){
+      const p = b.dataset.p;
+      o.st = { open: p === 'all' || p === 'open', todo: p === 'all' || p === 'open', complete: p === 'all' || p === 'complete', na: p === 'all' || p === 'na' };
+      repChanged();
+    }
+    else if(r === 'clear'){ const keep = { sort:o.sort, photos:o.photos, st:o.st }; S.walk.reportOpts = Object.assign(defaultRepOpts(), keep); saveWalk(); const y = window.scrollY; renderReport(); window.scrollTo(0, y); }
+    else if(r === 'pdf') makePDF(b);
+    else if(r === 'xlsx') makeXLSX(b);
+    else if(r === 'photos') exportPhotos(reportItems(S.walk, repOpts()), b, $('#repMsg'));
+  });
+  const read = () => {
+    o.resp = [...form.querySelectorAll('input[data-g="resp"]:checked')].map(x => x.value);
+    o.loc = [...form.querySelectorAll('input[data-g="loc"]:checked')].map(x => x.value);
+    o.div = [...form.querySelectorAll('input[data-g="div"]:checked')].map(x => x.value);
+    o.noFrom = $('#r-from').value.trim(); o.noTo = $('#r-to').value.trim(); o.q = $('#r-q').value;
+    o.photosOnly = $('#r-photosOnly').checked; o.notesOnly = $('#r-notesOnly').checked;
+    o.sort = $('#r-sort').value; o.photos = $('#r-photos').checked;
+    repChanged();
+  };
+  form.addEventListener('change', read);
+  form.addEventListener('input', e => { if(e.target.matches('input[type=text],input[type=search]')) read(); });
+  updateReportPreview();
+}
+function repChanged(){ saveWalk(); updateReportPreview(); }
+function updateReportPreview(){
+  const w = S.walk, o = repOpts(), items = reportItems(w, o);
+  const c = { complete:0, open:0, na:0, todo:0 }; let photos = 0;
+  items.forEach(it => { c[stKey(it)]++; photos += it.photos.length; });
+  document.querySelectorAll('#stChips [data-r="st"]').forEach(b => b.setAttribute('aria-pressed', String(!!o.st[b.dataset.k])));
+  const sum = (id, arr) => { const el = $('#' + id); if(el) el.textContent = arr.length ? (arr.length <= 2 ? arr.join(', ') : `${arr.length} selected`) : 'All'; };
+  sum('sum-resp', o.resp); sum('sum-loc', o.loc); sum('sum-div', o.div);
+  $('#repSummary').innerHTML = `
+    <div class="rowx" style="justify-content:space-between;margin-bottom:10px"><strong>${items.length} of ${w.items.length} items in this report</strong></div>
+    <div class="stat">
+      <div class="s-bad"><b>${c.open}</b><span>Not complete</span></div>
+      <div><b>${c.todo}</b><span>Not checked</span></div>
+      <div class="s-ok"><b>${c.complete}</b><span>Complete</span></div>
+      <div class="s-na"><b>${c.na}</b><span>N/A</span></div>
+    </div>
+    <div class="note" style="margin-top:8px">${esc(describeFilters(o))}</div>`;
+  const pb = $('#r-photoBtn'); if(pb){ pb.disabled = !photos; pb.querySelector('span').textContent = `Share or save photos (${photos})`; }
+  document.querySelectorAll('#repForm [data-r="pdf"], #repForm [data-r="xlsx"]').forEach(b => b.disabled = !items.length);
+  const MAX = 150; let html = '', last;
+  items.slice(0, MAX).forEach(it => {
+    const g = groupOf(o, it);
+    if(g !== null && g !== last){ html += `<div class="prev-group">${esc(g)}</div>`; last = g; }
+    html += `<div class="prev-row"><span class="pill" style="background:var(${ST_TOKEN[stKey(it)]})" title="${ST_LABEL[stKey(it)]}"></span><span class="no mono">#${esc(it.no || '—')}</span><span class="grow">${esc(it.item)}<span class="meta">${esc(ST_LABEL[stKey(it)])} · ${esc(respOf(it))}${o.sort !== 'location' ? ' · ' + esc(it.location) : ''}${it.photos.length ? ` · ${it.photos.length} photo${it.photos.length > 1 ? 's' : ''}` : ''}</span></span></div>`;
+  });
+  $('#repPreview').innerHTML = items.length
+    ? `<div class="eyebrow">Preview</div><div class="prev">${html}</div>${items.length > MAX ? `<div class="note">…and ${items.length - MAX} more in the report.</div>` : ''}`
+    : `<div class="panel empty">No items match these filters. Turn on more statuses or clear filters.</div>`;
 }
 
 /* ---------- events ---------- */
@@ -949,21 +1109,21 @@ async function exportPhotos(items, btn, msgEl){
 
 async function makePDF(btn){
   const msg = $('#repMsg');
-  if(!window.jspdf){ msg.textContent = 'The PDF builder did not load. Check the connection and reopen the page.'; return; }
+  if(!window.jspdf){ msg.textContent = 'The PDF builder did not load. Check the connection and reopen the app.'; return; }
+  const w = S.walk, o = repOpts(), items = reportItems(w, o);
+  if(!items.length){ msg.textContent = 'No items match these filters.'; return; }
   btn.disabled = true; msg.textContent = 'Building PDF…';
   try{
-    const w = S.walk; const c = counts(w);
-    const incTodo = $('#r-todo').checked, incDone = $('#r-done').checked;
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit:'pt', format:'letter' });
     const W = 612, H = 792, M = 40, CW = W - 2*M;
     let y = M;
-    const ink = [21,33,43], muted = [91,104,114], red = [194,50,31], green = [31,122,63], grey = [111,124,134], line = [211,218,222];
+    const ink = [21,33,43], muted = [91,104,114], line = [211,218,222];
+    const SC = { open:[194,50,31], complete:[31,122,63], na:[111,124,134], todo:[150,160,168] };
     const ensure = h => { if(y + h > H - M - 16){ doc.addPage(); y = M; } };
     const text = (s, x, size, style, color, maxW) => {
       doc.setFont('helvetica', style || 'normal'); doc.setFontSize(size); doc.setTextColor(...(color || ink));
-      const lines = doc.splitTextToSize(String(s ?? ''), maxW || CW);
-      const lh = size * 1.25;
+      const lines = doc.splitTextToSize(String(s ?? ''), maxW || CW); const lh = size * 1.25;
       lines.forEach(l => { ensure(lh); doc.text(l, x, y + size); y += lh; });
     };
     const rule = () => { doc.setDrawColor(...line); doc.setLineWidth(0.8); doc.line(M, y, W - M, y); y += 10; };
@@ -973,20 +1133,22 @@ async function makePDF(btn){
     text(w.stand || 'Untitled stand', M, 22, 'bold');
     if(w.address) text(w.address, M, 11, 'normal', muted);
     y += 6;
-    const meta = [['Walk date', fmtDate(w.date)], ['General contractor', w.gc], ['Walked by', w.by], ['Attendees', w.attendees], ['Report generated', new Date().toLocaleString()]].filter(r => r[1]);
+    const meta = [['Walk date', fmtDate(w.date)], ['General contractor', w.gc], ['Walked by', w.by], ['Attendees', w.attendees], ['Report generated', new Date().toLocaleString()], ['Report filters', describeFilters(o)]].filter(r => r[1]);
     meta.forEach(([k,v]) => {
-      ensure(14); doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(...muted); doc.text(k.toUpperCase(), M, y + 9.5);
-      const save = y;
-      doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(...ink);
+      doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
       const lines = doc.splitTextToSize(String(v), CW - 130);
-      lines.forEach((l,i) => { doc.text(l, M + 130, save + 10 + i*13); });
-      y = save + Math.max(1, lines.length) * 13 + 2;
+      ensure(lines.length * 13 + 2);
+      doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(...muted); doc.text(k.toUpperCase(), M, y + 9.5);
+      doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(...ink);
+      lines.forEach((l,i) => doc.text(l, M + 130, y + 10 + i*13));
+      y += Math.max(1, lines.length) * 13 + 2;
     });
     y += 8;
 
-    // Summary boxes
+    // Summary of the items in this report
+    const c = { complete:0, open:0, na:0, todo:0 }; items.forEach(it => c[stKey(it)]++);
     ensure(56);
-    const boxes = [['Items', c.total, ink], ['Complete', c.complete, green], ['Not complete', c.open, red], ['N/A', c.na, grey], ['Not checked', c.todo, muted]];
+    const boxes = [['In report', items.length, ink], ['Not complete', c.open, SC.open], ['Not checked', c.todo, muted], ['Complete', c.complete, SC.complete], ['N/A', c.na, SC.na]];
     const bw = (CW - 4*8) / 5;
     boxes.forEach(([k,n,col], i) => {
       const x = M + i*(bw + 8);
@@ -996,34 +1158,43 @@ async function makePDF(btn){
     });
     y += 60;
 
-    // Open by responsible party
+    // By responsible party
     const byResp = {};
-    w.items.filter(i => i.status === 'open').forEach(i => { const k = i.resp || 'Unassigned'; byResp[k] = (byResp[k]||0) + 1; });
-    if(Object.keys(byResp).length){
-      text('Open items by responsible party', M, 12, 'bold'); y += 2;
-      Object.entries(byResp).sort((a,b)=>b[1]-a[1]).forEach(([k,n]) => {
-        ensure(14); doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(...ink);
-        doc.text(k, M, y + 10); doc.text(String(n), W - M, y + 10, { align:'right' }); y += 15;
+    items.forEach(it => { const k = respOf(it); byResp[k] = byResp[k] || { n:0, open:0, todo:0, complete:0, na:0 }; byResp[k].n++; byResp[k][stKey(it)]++; });
+    const rows = Object.entries(byResp).sort((a,b) => b[1].open - a[1].open || b[1].n - a[1].n || a[0].localeCompare(b[0]));
+    if(rows.length){
+      text('By responsible party', M, 12, 'bold'); y += 2;
+      const cols = [['Items', 'n'], ['Not complete', 'open'], ['Not checked', 'todo'], ['Complete', 'complete'], ['N/A', 'na']];
+      const cx = i => W - M - (cols.length - 1 - i) * 76;
+      ensure(16);
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...muted);
+      doc.text('RESPONSIBLE', M, y + 9); cols.forEach(([h], i) => doc.text(h.toUpperCase(), cx(i), y + 9, { align:'right' }));
+      y += 14;
+      rows.forEach(([k, v]) => {
+        ensure(15); doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...ink);
+        doc.text(doc.splitTextToSize(k, CW - 400)[0], M, y + 10);
+        cols.forEach(([, f], i) => { doc.setTextColor(...(f === 'open' && v[f] ? SC.open : ink)); doc.text(String(v[f]), cx(i), y + 10, { align:'right' }); });
+        y += 15;
       });
       y += 6;
     }
 
-    const ordered = st => { const out = []; w.locations.forEach(l => w.items.forEach(it => { if(it.location === l && st(it)) out.push(it); })); return out; };
-
-    // Open items with photos
-    const open = ordered(i => i.status === 'open');
+    // Items
     rule();
-    text(`Not complete (${open.length})`, M, 15, 'bold', red); y += 4;
-    if(!open.length) text('No open items.', M, 10.5, 'normal', muted);
-    let lastLoc = null;
-    for(const it of open){
-      if(it.location !== lastLoc){ ensure(40); y += 4; text(it.location.toUpperCase(), M, 10, 'bold', muted); lastLoc = it.location; }
-      ensure(48);
-      doc.setFillColor(...red); doc.rect(M, y + 2, 3, 12, 'F');
+    text(`Items (${items.length})`, M, 15, 'bold'); y += 2;
+    let lastGroup;
+    for(const it of items){
+      const g = groupOf(o, it);
+      if(g !== null && g !== lastGroup){ ensure(44); y += 6; text(g.toUpperCase(), M, 10, 'bold', muted); lastGroup = g; }
+      const k = stKey(it);
+      ensure(40);
+      const top = y;
       text(`#${it.no || '—'}   ${it.item}`, M + 10, 11, 'bold', ink, CW - 10);
-      text(`Responsible: ${it.resp || 'Unassigned'}   ·   Division: ${it.division || '—'}`, M + 10, 9.5, 'normal', muted, CW - 10);
-      if(it.notes) text(it.notes, M + 10, 10.5, 'normal', ink, CW - 10);
-      if(it.photos.length){
+      const metaLine = [ST_LABEL[k] + (it.fa ? ', final approval given' : ''), 'Responsible: ' + respOf(it), o.sort === 'location' ? null : it.location, 'Division: ' + (it.division || '—')].filter(Boolean).join('   ·   ');
+      text(metaLine, M + 10, 9.5, 'normal', k === 'open' ? SC.open : muted, CW - 10);
+      if(y > top) { doc.setFillColor(...SC[k]); doc.rect(M, top + 2, 3, Math.min(y - top, 40) - 2, 'F'); }
+      if((it.notes || '').trim()) text(it.notes, M + 10, 10.5, 'normal', ink, CW - 10);
+      if(o.photos && it.photos.length){
         const recs = (await Promise.all(it.photos.map(id => DB.get('photos', id)))).filter(Boolean);
         const colW = (CW - 10 - 10) / 2, maxH = 200;
         y += 4;
@@ -1031,58 +1202,53 @@ async function makePDF(btn){
           const pair = recs.slice(i, i+2).map(p => { const s = Math.min(colW / p.w, maxH / p.h); return { p, w:p.w*s, h:p.h*s }; });
           const rh = Math.max(...pair.map(q => q.h));
           ensure(rh + 8);
-          pair.forEach((q, j) => { doc.addImage(q.p.ann || q.p.src, 'JPEG', M + 10 + j*(colW + 10), y, q.w, q.h, undefined, 'FAST'); });
+          pair.forEach((q, j) => doc.addImage(q.p.ann || q.p.src, 'JPEG', M + 10 + j*(colW + 10), y, q.w, q.h, undefined, 'FAST'));
           y += rh + 8;
         }
       }
       y += 8;
     }
 
-    const compact = (title, list, color, showStatus) => {
-      ensure(60); y += 6; rule();
-      text(`${title} (${list.length})`, M, 15, 'bold', color); y += 4;
-      let last = null;
-      list.forEach(it => {
-        if(it.location !== last){ ensure(30); y += 3; text(it.location.toUpperCase(), M, 9.5, 'bold', muted); last = it.location; }
-        const suffix = showStatus ? `   [${STATUS[it.status]}${it.fa ? ', final approved' : ''}]` : '';
-        text(`#${it.no || '—'}   ${it.item}   — ${it.resp || 'Unassigned'}${suffix}`, M + 10, 9.5, 'normal', ink, CW - 10);
-        if(it.notes) text(`Note: ${it.notes}`, M + 22, 9, 'italic', muted, CW - 22);
-      });
-    };
-    if(incTodo) compact('Not checked', ordered(i => !i.status), muted, false);
-    if(incDone) compact('Complete and N/A', ordered(i => i.status === 'complete' || i.status === 'na'), green, true);
-
-    // Footer
     const pages = doc.getNumberOfPages();
     for(let i = 1; i <= pages; i++){
       doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...muted);
       doc.text(`${w.stand || ''}  ·  Punch walk ${fmtDate(w.date)}`, M, H - 22);
       doc.text(`Page ${i} of ${pages}`, W - M, H - 22, { align:'right' });
     }
-    const blob = doc.output('blob');
-    await saveFile(`Punch Walk - ${safeName(w.stand)} - ${w.date}.pdf`, blob, msg);
+    const scope = reportScopeName(o);
+    await saveFile(`Punch Walk - ${safeName(w.stand)} - ${w.date}${scope}.pdf`, doc.output('blob'), msg);
   }catch(err){ msg.textContent = 'Could not build the PDF. ' + (err && err.message ? err.message : ''); }
   btn.disabled = false;
+}
+function reportScopeName(o){
+  const sts = Object.keys(ST_LABEL).filter(k => o.st[k]);
+  let s = '';
+  if(sts.length === 2 && o.st.open && o.st.todo) s = ' - Open items';
+  else if(sts.length === 1) s = ' - ' + ST_LABEL[sts[0]];
+  if(o.resp.length === 1) s += ' - ' + safeName(o.resp[0]);
+  return s;
 }
 
 async function makeXLSX(btn){
   const msg = $('#repMsg');
   if(!window.XLSX){ msg.textContent = 'The Excel writer did not load.'; return; }
+  const w = S.walk, o = repOpts(), items = reportItems(w, o);
+  if(!items.length){ msg.textContent = 'No items match these filters.'; return; }
   btn.disabled = true;
   try{
-    const w = S.walk;
     const rows = [
-      ['Punch Walk', w.stand || ''], ['Address', w.address || ''], ['Walk date', w.date || ''], ['General contractor', w.gc || ''], ['Walked by', w.by || ''], ['Attendees', w.attendees || ''], [],
-      ['NO','Item','Division','Location','Resp.','Complete','Not Complete','Non Applicable','Final Approval','Notes','Photos']
+      ['Punch Walk', w.stand || ''], ['Address', w.address || ''], ['Walk date', w.date || ''], ['General contractor', w.gc || ''], ['Walked by', w.by || ''], ['Attendees', w.attendees || ''], ['Report filters', describeFilters(o)], [],
+      ['NO','Item','Division','Location','Resp.','Status','Complete','Not Complete','Non Applicable','Final Approval','Notes','Photos']
     ];
-    w.locations.forEach(l => w.items.filter(i => i.location === l).forEach(i => rows.push([
-      i.no, i.item, i.division, i.location, i.resp, i.status === 'complete' ? 'x' : '', i.status === 'open' ? 'x' : '', i.status === 'na' ? 'x' : '', i.fa ? 'x' : '', i.notes || '', i.photos.length || ''
-    ])));
+    items.forEach(i => rows.push([
+      i.no, i.item, i.division, i.location, i.resp, ST_LABEL[stKey(i)], i.status === 'complete' ? 'x' : '', i.status === 'open' ? 'x' : '', i.status === 'na' ? 'x' : '', i.fa ? 'x' : '', i.notes || '', i.photos.length || ''
+    ]));
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{wch:6},{wch:60},{wch:14},{wch:22},{wch:16},{wch:10},{wch:13},{wch:15},{wch:14},{wch:50},{wch:8}];
+    ws['!cols'] = [{wch:6},{wch:60},{wch:14},{wch:22},{wch:16},{wch:13},{wch:10},{wch:13},{wch:15},{wch:14},{wch:50},{wch:8}];
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s:{ r:8, c:0 }, e:{ r:8 + items.length, c:11 } }) };
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Punch Walk');
     const out = XLSX.write(wb, { type:'array', bookType:'xlsx' });
-    await saveFile(`Punch Walk - ${safeName(w.stand)} - ${w.date}.xlsx`, new Blob([out]), msg);
+    await saveFile(`Punch Walk - ${safeName(w.stand)} - ${w.date}${reportScopeName(o)}.xlsx`, new Blob([out]), msg);
   }catch(err){ msg.textContent = 'Could not build the Excel file.'; }
   btn.disabled = false;
 }
