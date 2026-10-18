@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Punch Walk Guide</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0b5d8a">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+@font-face{font-family:"Barlow";font-weight:400;font-display:swap;src:url(fonts/barlow-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow";font-weight:600;font-display:swap;src:url(fonts/barlow-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:700;font-display:swap;src:url(fonts/barlow-condensed-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:500;font-display:swap;src:url(fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2")}
+/* Layout: reference guide — sticky contents rail on wide screens, single column on phones */
+:root{
+  --bg:#eef1f3; --surface:#ffffff; --surface-2:#f6f8f9; --ink:#15212b; --muted:#5b6872; --line:#d3dade;
+  --accent:#0b5d8a; --accent-soft:#dcebf3; --ok:#1f7a3f; --bad:#c2321f;
+  --font-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif; --font-body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --font-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px)
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0f161c; --surface:#18222a; --surface-2:#1d2932; --ink:#e8edf0; --muted:#94a2ac; --line:#2c3a45; --accent:#4fa8d8; --accent-soft:#16364a; --ok:#4cc27a; --bad:#ff6b57; color-scheme:dark}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+html,body{background:var(--bg);color:var(--ink)}
+body{margin:0;font-family:var(--font-body);font-size:17px;line-height:1.55}
+a{color:var(--accent);font-weight:600;overflow-wrap:anywhere}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+header.top{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+header.top .in{max-width:1100px;margin:0 auto;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));display:flex;align-items:center;gap:12px}
+header.top img{width:34px;height:34px;border-radius:8px}
+header.top .t{font-family:var(--font-display);font-weight:700;font-size:21px;flex:1;min-width:0}
+.back{min-height:42px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);padding:8px 14px;font-weight:600;text-decoration:none;color:var(--ink);white-space:nowrap}
+.layout{max-width:1100px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 60px;display:grid;grid-template-columns:240px minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:860px){.layout{grid-template-columns:1fr;gap:16px}}
+nav.toc{position:sticky;top:76px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:15px}
+@media (max-width:860px){nav.toc{position:static}}
+nav.toc ol{margin:8px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:5px}
+nav.toc a{font-weight:500;text-decoration:none}
+nav.toc a:hover{text-decoration:underline}
+main{min-width:0;display:flex;flex-direction:column;gap:18px}
+section{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;scroll-margin-top:72px}
+h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:.01em;text-wrap:balance;margin:0}
+h1{font-size:34px;line-height:1.05}
+h2{font-size:25px;margin-bottom:8px}
+h3{font-size:19px;margin:16px 0 4px}
+.eyebrow{font-family:var(--font-display);font-weight:700;font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+p{margin:6px 0;max-width:68ch}
+ol,ul{margin:6px 0;padding-left:24px;max-width:68ch}
+li{margin:4px 0}
+b,strong{font-weight:600}
+.btnname{font-weight:600;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:0 6px;white-space:nowrap}
+.tip{background:var(--accent-soft);border-radius:10px;padding:10px 14px;margin:10px 0;max-width:68ch}
+.warn{border-left:4px solid var(--bad);background:var(--surface-2);border-radius:8px;padding:10px 14px;margin:10px 0;max-width:68ch}
+.links{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:10px}
+.links div{background:var(--surface-2);border-radius:10px;padding:10px 12px}
+.links .lbl{display:block;font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-display)}
+table{border-collapse:collapse;width:100%;font-size:15px}
+.tw{overflow-x:auto;margin:8px 0}
+th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{font-family:var(--font-display);letter-spacing:.05em;text-transform:uppercase;font-size:13px;color:var(--muted)}
+.intro p{font-size:18px}
+</style>
+</head>
+<body>
+<header class="top"><div class="in"><img src="icons/icon-192.png" alt=""><div class="t">Punch Walk Guide</div><a class="back" href="./">Back to the app</a></div></header>
+<div class="layout">
+<nav class="toc" aria-label="Contents"><div class="eyebrow">Contents</div><ol>
+  <li><a href="#links">Links</a></li>
+  <li><a href="#install">Install on your phone</a></li>
+  <li><a href="#walk">Start a punch walk</a></li>
+  <li><a href="#items">Mark items</a></li>
+  <li><a href="#photos">Photos and markup</a></li>
+  <li><a href="#site">Site photos</a></li>
+  <li><a href="#report">Reports and sharing</a></li>
+  <li><a href="#computer">Move a walk to your computer</a></li>
+  <li><a href="#vendors">Vendor updates</a></li>
+  <li><a href="#delete">Delete a walk</a></li>
+  <li><a href="#offline">Offline use and app updates</a></li>
+  <li><a href="#template">Update the checklist</a></li>
+  <li><a href="#trouble">Troubleshooting</a></li>
+</ol></nav>
+<main>
+<section class="intro">
+  <div class="eyebrow">For construction project managers</div>
+  <h1>How to use Punch Walk</h1>
+  <p>Punch Walk runs the 7 Brew stand hand-over punch list in the field: mark every checklist item, document deficiencies with marked-up photos, send tasks to vendors, review their completion photos, and share reports. It works offline, and everything you record stays on your device until you share it.</p>
+</section>
+
+<section id="links">
+  <h2>1. Links</h2>
+  <div class="links">
+    <div><span class="lbl">The app</span><a href="https://dgray-apmg.github.io/Punch-walk/">https://dgray-apmg.github.io/Punch-walk/</a></div>
+    <div><span class="lbl">Vendor page</span><a href="https://dgray-apmg.github.io/Punch-walk/vendor.html">https://dgray-apmg.github.io/Punch-walk/vendor.html</a></div>
+    <div><span class="lbl">This guide</span><a href="https://dgray-apmg.github.io/Punch-walk/help.html">https://dgray-apmg.github.io/Punch-walk/help.html</a></div>
+    <div><span class="lbl">App files (editors)</span><a href="https://github.com/DGray-APMG/Punch-walk">https://github.com/DGray-APMG/Punch-walk</a></div>
+  </div>
+  <p class="tip">The team passcode is sent to you separately. Never forward it to vendors. Vendors only use the stand number.</p>
+</section>
+
+<section id="install">
+  <h2>2. Install on your phone</h2>
+  <p>Do this once, with signal.</p>
+  <ol>
+    <li>Open <a href="https://dgray-apmg.github.io/Punch-walk/">https://dgray-apmg.github.io/Punch-walk/</a>. Use Safari on iPhone or Chrome on Android.</li>
+    <li>Add it to your home screen:
+      <ul><li><b>iPhone:</b> tap Share, then <span class="btnname">Add to Home Screen</span>, then <span class="btnname">Add</span>.</li>
+          <li><b>Android:</b> tap the ⋮ menu, then <span class="btnname">Add to Home screen</span>.</li></ul></li>
+    <li>Open <b>Punch Walk</b> from the new home screen icon.</li>
+    <li>Enter the team passcode and tap <span class="btnname">Unlock</span>. The 7 Brew checklist loads and stays on your phone.</li>
+  </ol>
+  <p class="warn">Always open the app from the home screen icon, not a browser tab. iPhone can clear data saved in a browser tab after a period of non-use; home screen apps keep their data.</p>
+  <h3>On a computer</h3>
+  <p>Open <a href="https://dgray-apmg.github.io/Punch-walk/">the app link</a> in Chrome, Edge or Safari. To work on a walk started on your phone, see <a href="#computer">Move a walk to your computer</a>.</p>
+</section>
+
+<section id="walk">
+  <h2>3. Start a punch walk</h2>
+  <ol>
+    <li>On the home screen, tap <span class="btnname">Start a new punch walk</span>.</li>
+    <li>Enter the <b>stand number</b>, address, walk date, general contractor, your name, and attendees.</li>
+    <li>Tap <span class="btnname">Start walk</span>. Every checklist item appears, grouped by location.</li>
+  </ol>
+  <p class="tip">Enter the stand number exactly as it appears on the project, for example CIPM0169. It is the password vendors use to open their task files.</p>
+  <p>To change these details later, open the walk and tap the settings icon (sliders) at the top.</p>
+</section>
+
+<section id="items">
+  <h2>4. Mark items</h2>
+  <p>Each item has three buttons on the right. Tap again to clear a status.</p>
+  <div class="tw"><table>
+    <tr><th>Button</th><th>Meaning</th></tr>
+    <tr><td>✓</td><td>Complete</td></tr>
+    <tr><td>✕</td><td>Not complete (a punch item that needs work)</td></tr>
+    <tr><td>N/A</td><td>Does not apply to this stand</td></tr>
+  </table></div>
+  <h3>Find items fast</h3>
+  <ul>
+    <li>The chips at the top filter the list: All, Not checked, Not complete, Complete, N/A, With photos.</li>
+    <li>Use the location menu to show one area, such as Interior or Roof.</li>
+    <li>Use search to find an item by its words, number or your notes.</li>
+  </ul>
+  <h3>Item details</h3>
+  <p>Tap an item's text to open it. There you can:</p>
+  <ul>
+    <li>Write <b>notes / corrective action</b>: what is wrong, who fixes it, by when.</li>
+    <li>Change the <b>responsible party</b> (GC, Low Voltage, Sign Vendor and so on).</li>
+    <li>Check <b>Final approval given</b> on completed items.</li>
+    <li>Add photos (see the next section).</li>
+    <li>Use <span class="btnname">Previous</span> and <span class="btnname">Next</span> to move through items without going back to the list.</li>
+  </ul>
+  <h3>Items not on the checklist</h3>
+  <p>At the bottom of the list, tap <span class="btnname">Add an item not on the list</span>. Enter the description, location, division and responsible party. Added items start as Not complete.</p>
+</section>
+
+<section id="photos">
+  <h2>5. Photos and markup</h2>
+  <h3>Take photos</h3>
+  <ol>
+    <li>In an item, tap <span class="btnname">Take photos</span>. The first time, allow camera access.</li>
+    <li>Tap the round shutter once for each photo. There is no limit and no "Use Photo" step between shots.</li>
+    <li>Thumbnails line up along the bottom. Tap × on a thumbnail to remove it.</li>
+    <li>Tap <span class="btnname">Done</span> to add them all. A single photo opens straight into markup.</li>
+  </ol>
+  <p>Other ways to add photos:</p>
+  <ul>
+    <li><span class="btnname">From library</span> adds photos already on your phone (pick several at once).</li>
+    <li><b>Or use the phone's camera app</b> opens the regular camera for one photo, when you need zoom, flash or HDR.</li>
+  </ul>
+  <h3>Mark up a photo</h3>
+  <p>Tap any photo to open markup. Pick a color (red, yellow, white, blue), then a tool:</p>
+  <ul>
+    <li><b>Arrow</b>, <b>Circle</b>, <b>Box</b>: drag on the photo.</li>
+    <li><b>Freehand</b>: draw with your finger.</li>
+    <li><b>Text (T)</b>: tap to place a text box or drag to size one, then type. The text shrinks to fit as you type more. Tap <span class="btnname">Done</span> or tap outside the box to finish. To edit text later, pick the Text tool and tap the box.</li>
+  </ul>
+  <p><span class="btnname">Undo</span> removes the last mark, <span class="btnname">Clear</span> removes all marks, and <span class="btnname">Save</span> keeps them. Marked-up photos appear in reports and exports; the original is kept too.</p>
+  <h3>Delete a photo</h3>
+  <p>Tap the trash icon on the photo, then tap <span class="btnname">Delete?</span> to confirm.</p>
+</section>
+
+<section id="site">
+  <h2>6. Site photos</h2>
+  <p>Site photos are general project photos for the record, such as elevations, equipment and finished areas. They are not punch items.</p>
+  <ol>
+    <li>In the walk, tap <span class="btnname">Site photos</span>.</li>
+    <li>Use <span class="btnname">Take photos</span> or <span class="btnname">From library</span>.</li>
+    <li>Add an optional caption under each photo. Tap a photo to mark it up.</li>
+    <li>To save them, tap <span class="btnname">Share or save as JPEG files</span>. Each photo is its own JPEG, named with the stand, date, number and caption. On a phone, pick <b>Save Images</b> (Photos), <b>Save to Files</b>, Mail or Dropbox.</li>
+  </ol>
+  <p>Site photos can also go into the PDF report (see the next section).</p>
+</section>
+
+<section id="report">
+  <h2>7. Reports and sharing</h2>
+  <p>In the walk, tap <span class="btnname">Report</span>.</p>
+  <h3>Choose what to include</h3>
+  <ul>
+    <li>Quick buttons: <b>All items</b>, <b>Open items</b> (Not complete plus Not checked), <b>Complete</b>, <b>N/A</b>. You can also switch each status on or off.</li>
+    <li><b>Filter</b> by responsible party, location, division, item number range, text in the item or notes, and items with photos or notes.</li>
+    <li><b>Sort and group</b> by location, item number, responsible party, status or division.</li>
+    <li>Choose whether to include item photos and site photos in the PDF.</li>
+  </ul>
+  <p>The count and preview show exactly what will be in the report. Your settings are remembered for each walk.</p>
+  <h3>Build and send</h3>
+  <ul>
+    <li><span class="btnname">Build PDF report</span>: summary, counts by responsible party, each item with notes and photos, and site photos at the end.</li>
+    <li><span class="btnname">Build Excel punch list</span>: the filtered items with status and notes, ready to sort in Excel.</li>
+    <li><span class="btnname">Share or save photos</span>: the item photos in the report, marked-up and original.</li>
+  </ul>
+  <p>Each file opens a panel. Tap <span class="btnname">Share</span> and pick Mail to email it, or Dropbox, OneDrive or Files to save it. On a computer, use <span class="btnname">Save to this device</span>.</p>
+  <p class="tip">Example: to send the GC their open items, tap Open items, check GC under Responsible party, and build the PDF. The file name includes "Open items - GC".</p>
+</section>
+
+<section id="computer">
+  <h2>8. Move a walk to your computer</h2>
+  <p>After the walk, you can manage the punch list from your computer instead of your phone.</p>
+  <ol>
+    <li>On the phone, open the walk, tap the settings icon, then <span class="btnname">Save full walk file</span>.</li>
+    <li>Share it to OneDrive, Dropbox or Files, or email it to yourself. The file holds everything: items, notes, photos, site photos and vendor updates.</li>
+    <li>On the computer, open <a href="https://dgray-apmg.github.io/Punch-walk/">https://dgray-apmg.github.io/Punch-walk/</a>, click <span class="btnname">Open a walk file</span>, and choose the file.</li>
+    <li>Keep working on the computer. The computer does not need the team passcode to open a walk file.</li>
+  </ol>
+  <p>Once the file is saved somewhere safe, you can delete the walk from your phone. To move it back, save a new full walk file on the computer and open it on the phone.</p>
+  <p>If you open a file for a walk that is already on that device, the app asks: <b>Replace the copy on this device</b> (use the file's version) or <b>Keep both</b>.</p>
+  <p class="warn">Changes are not synced between devices. Work on one device at a time, and save a new walk file whenever you switch.</p>
+</section>
+
+<section id="vendors">
+  <h2>9. Vendor updates</h2>
+  <p>Send a vendor their open items, let them upload completion photos and notes, then accept or deny each one. Vendors cannot change your punch list, and they never need the team passcode.</p>
+  <h3>Send tasks to a vendor</h3>
+  <ol>
+    <li>In the walk, tap <span class="btnname">Vendor updates</span>.</li>
+    <li>Pick the <b>responsible party</b>, choose which statuses to include, and choose whether to include your photos.</li>
+    <li>Enter your email (it is remembered) so the vendor knows where to reply.</li>
+    <li>Tap <span class="btnname">Build vendor task file</span> and save or share it.</li>
+    <li>Tap <span class="btnname">Copy instructions for the vendor</span>, paste them into an email, and attach the task file.</li>
+  </ol>
+  <h3>What the vendor does</h3>
+  <ol>
+    <li>Opens <a href="https://dgray-apmg.github.io/Punch-walk/vendor.html">https://dgray-apmg.github.io/Punch-walk/vendor.html</a> on a computer or phone.</li>
+    <li>Loads the task file and enters the <b>stand number</b> as the password.</li>
+    <li>Enters their name, company and email.</li>
+    <li>For each task, adds completion photos (drag and drop works on a computer), adds notes, and checks <b>Mark this task complete</b>.</li>
+    <li>Clicks <span class="btnname">Create response file</span>, saves it, and emails it back to you.</li>
+  </ol>
+  <p>The vendor's work is saved in their browser, so they can stop and continue later.</p>
+  <h3>Review a response</h3>
+  <ol>
+    <li>Save the response file from the vendor's email (on iPhone: tap the attachment, Share, Save to Files).</li>
+    <li>Open the walk, tap <span class="btnname">Vendor updates</span>, then <span class="btnname">Load a vendor response file</span>.</li>
+    <li>Each update shows the vendor's notes and photos. Tap a photo to enlarge it.
+      <ul><li><span class="btnname">Accept</span>: the item becomes Complete, the vendor photos are added to it, and their note is added to yours.</li>
+          <li><span class="btnname">Deny</span>: enter a reason. The item stays Not complete.</li>
+          <li><span class="btnname">Undo</span> reverses either choice.</li></ul></li>
+    <li>Tap <span class="btnname">Email vendor</span> to open a drafted email listing what was accepted and what needs more work.</li>
+  </ol>
+  <p>Items with an update waiting show "Vendor update to review" in the list, and the Vendor updates button shows a count. A response only loads into the walk it was sent from, and the same response cannot be loaded twice.</p>
+  <p class="warn">Stand numbers appear on plans and permits, so the stand number keeps out casual viewers but is not strong security. Send task files only to the responsible vendor.</p>
+</section>
+
+<section id="delete">
+  <h2>10. Delete a walk</h2>
+  <ol>
+    <li>Open the walk and tap the settings icon.</li>
+    <li>Tap <span class="btnname">Delete this walk</span>, then tap again to confirm.</li>
+  </ol>
+  <p>This removes the walk, its notes, item photos, site photos and vendor photos from the app. It cannot be undone, so save a report or full walk file first.</p>
+  <p>Deleting does not remove photos you added from your phone's library (they stay in Photos), or files you already exported and shared.</p>
+</section>
+
+<section id="offline">
+  <h2>11. Offline use and app updates</h2>
+  <ul>
+    <li>After the first unlock, the app opens and works with no signal: marking items, photos, markup, reports and walk files.</li>
+    <li>A "No signal" notice appears when you are offline. Your work keeps saving on the phone.</li>
+    <li>Sharing files to email or Dropbox needs signal at the moment you send.</li>
+    <li>When a new version is published, an <span class="btnname">Update</span> bar appears at the top of the home screen. Tap it; your walks are kept.</li>
+  </ul>
+</section>
+
+<section id="template">
+  <h2>12. Update the checklist</h2>
+  <p>For whoever maintains the master punch list.</p>
+  <ol>
+    <li>In the app, open <span class="btnname">Template options</span> on the home screen, under <b>Update the team checklist</b>.</li>
+    <li>Enter a passcode (the current one or a new one) and choose the updated Excel workbook.</li>
+    <li>Save the file it builds, <b>template.enc.json</b>.</li>
+    <li>Upload it to <a href="https://github.com/DGray-APMG/Punch-walk">the GitHub repo</a> (Add file, Upload files), replacing the old file, and commit.</li>
+  </ol>
+  <p>Phones pick up the new checklist the next time the app opens with signal. If the passcode changed, each phone asks for it once. Walks already started keep their original list.</p>
+  <p>To use a different checklist on one phone only, choose <span class="btnname">Load Excel for this phone</span> under Template options.</p>
+</section>
+
+<section id="trouble">
+  <h2>13. Troubleshooting</h2>
+  <div class="tw"><table>
+    <tr><th>Problem</th><th>What to do</th></tr>
+    <tr><td>Take photos says camera access is blocked</td><td>iPhone: Settings, Safari, Camera, set to Ask or Allow, then reopen the app. You can also use "Or use the phone's camera app".</td></tr>
+    <tr><td>The checklist asks for the passcode again</td><td>The team checklist was updated with a new passcode. Ask your director for it. You can keep using the current list until then.</td></tr>
+    <tr><td>No Share button, only Save</td><td>That browser cannot share files. Save the file, then attach it to an email or upload it.</td></tr>
+    <tr><td>A vendor says the stand number does not work</td><td>Check the stand number in Walk details matches what you gave them. Spaces and capital letters do not matter.</td></tr>
+    <tr><td>A vendor response will not load</td><td>Open the walk the tasks were sent from. A response only loads into that walk.</td></tr>
+    <tr><td>A vendor's response file is too large to email</td><td>Ask them to send fewer photos per response, or split the tasks into two responses.</td></tr>
+    <tr><td>A walk is missing on a new phone or computer</td><td>Walks live on the device where they were made. Move them with a full walk file.</td></tr>
+  </table></div>
+</section>
+</main>
+</div>
+</body>
+</html>

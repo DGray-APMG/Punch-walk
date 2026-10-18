@@ -1,7 +1,7 @@
 /* Punch Walk service worker: caches the app so it opens and runs with no signal. */
-const VERSION = 'punch-walk-v7';
+const VERSION = 'punch-walk-v8';
 const ASSETS = [
-  './', './index.html', './vendor.html', './manifest.webmanifest',
+  './', './index.html', './vendor.html', './help.html', './manifest.webmanifest',
   './vendor/xlsx.full.min.js', './vendor/jspdf.umd.min.js', './vendor/jszip.min.js',
   './fonts/barlow-latin-400-normal.woff2', './fonts/barlow-latin-500-normal.woff2', './fonts/barlow-latin-600-normal.woff2',
   './fonts/barlow-condensed-latin-600-normal.woff2', './fonts/barlow-condensed-latin-700-normal.woff2', './fonts/ibm-plex-mono-latin-500-normal.woff2',
@@ -29,7 +29,7 @@ self.addEventListener('fetch', e => {
   }
   // Page loads: serve the cached app shell.
   if (req.mode === 'navigate') {
-    const page = url.pathname.endsWith('/vendor.html') ? './vendor.html' : './index.html';
+    const page = url.pathname.endsWith('/vendor.html') ? './vendor.html' : url.pathname.endsWith('/help.html') ? './help.html' : './index.html';
     e.respondWith(caches.match(page).then(r => r || fetch(req)));
     return;
   }

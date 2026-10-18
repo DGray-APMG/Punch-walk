@@ -450,7 +450,7 @@ function renderHome(){
   const walks = [...S.walks].sort((a,b) => (b.updated||0) - (a.updated||0));
   app.innerHTML = `
   ${S.updateReady ? `<div class="update pad"><span>A new version of the app is ready.</span><button data-act="applyupdate">Update</button></div>` : ''}
-  <header class="bar"><div class="bar-in pad"><div class="grow"><div class="title">Punch Walk</div><div class="sub">7 Brew stand hand-over punch lists</div></div></div></header>
+  <header class="bar"><div class="bar-in pad"><div class="grow"><div class="title">Punch Walk</div><div class="sub">7 Brew stand hand-over punch lists</div></div><a class="iconbtn" href="help.html" style="text-decoration:none;color:inherit">${I.note}<span>Guide</span></a></div></header>
   <div class="pad section stack">
     ${DB.ok ? '' : '<div class="banner warn">This browser is blocking on-device storage. Walks will be lost when the page closes. Save the report before leaving.</div>'}
     ${S.online ? '' : '<div class="banner">No signal. The app keeps working offline, and walks, photos and markup save on this phone.</div>'}
@@ -488,7 +488,7 @@ function renderHome(){
         <div class="note mono" style="margin-top:6px">${c.total - c.todo}/${c.total} checked · ${c.open} not complete · ${c.photos + c.site} photos</div>
       </button>`; }).join('')
       : `<div class="panel empty">No walks yet. Load the template, then start a walk for a stand. Each walk lists every template item grouped by location, ready to mark Complete, Not complete or N/A.</div>`}
-    <p class="note">Walks and photos are stored only on this phone. Share the PDF report to send results to others. Add this app to your home screen so it opens offline.</p>
+    <p class="note">Walks and photos are stored only on this phone. Share the PDF report to send results to others. Add this app to your home screen so it opens offline. <a href="help.html">Read the guide</a>.</p>
   </div>`;
 }
 
@@ -1020,6 +1020,7 @@ async function renderVendors(){
   <div class="pad section stack">
     <div class="panel stack">
       <div class="eyebrow">1 · Send tasks to a vendor</div>
+      <div class="note"><a href="help.html#vendors">How vendor updates work</a></div>
       <div class="note">Builds a task file locked with the stand number. The vendor opens it on the vendor page, adds completion photos and notes, marks tasks complete, and emails you a response file. Vendors cannot change your punch list.</div>
       <label class="f"><span>Responsible party</span><select id="v-resp"><option value="">All responsible parties</option>${Object.entries(openBy).sort().map(([k, v]) => `<option value="${esc(k)}" ${vo.resp === k ? 'selected' : ''}>${esc(k)} (${v.open} not complete${v.todo ? `, ${v.todo} not checked` : ''})</option>`).join('')}</select></label>
       <label class="check"><input type="checkbox" id="v-open" ${vo.open ? 'checked' : ''}> Include Not complete items</label>
