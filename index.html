@@ -206,6 +206,24 @@ details.more summary .note{white-space:nowrap;overflow:hidden;text-overflow:elli
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .gcard{display:flex;flex-direction:column;gap:6px;min-width:0}
 .gcard input{min-height:42px;padding:8px 10px}
+.camapp{align-self:center;font-size:14px;min-height:40px;display:inline-flex;align-items:center;position:relative}
+.cam{position:fixed;inset:0;z-index:58;background:#000;display:flex;flex-direction:column;color:#fff;padding-top:env(safe-area-inset-top,0px)}
+.cam-view{position:relative;flex:1;min-height:0}
+.cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+.cam-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .2s}
+.cam-flash.on{opacity:.75;transition:none}
+.cam-count{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);padding:6px 12px;border-radius:16px;font-weight:600;font-size:15px;white-space:nowrap}
+.cam-strip{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;min-height:74px;background:#000}
+.cam-strip .t{position:relative;flex:none;width:58px;height:58px;border-radius:8px;overflow:hidden;border:2px solid #fff}
+.cam-strip img{width:100%;height:100%;object-fit:cover;display:block}
+.cam-strip button{position:absolute;top:0;right:0;width:24px;height:24px;border:0;border-radius:0 0 0 8px;background:rgba(0,0,0,.7);color:#fff;font-size:16px;line-height:1;padding:0}
+.cam-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:10px max(20px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));background:#000}
+.cam-bar button{color:#fff;background:none;border:0;font-weight:700;font-size:17px;min-height:48px}
+.cam-bar #camCancel{justify-self:start}
+.cam-bar .done{justify-self:end;background:#4fa8d8;color:#06131c;border-radius:10px;padding:0 16px}
+.cam-bar .done:disabled{opacity:.4}
+.cam-bar .shutter{width:76px;height:76px;border-radius:50%;background:#fff;border:0;box-shadow:0 0 0 4px #000 inset,0 0 0 4px #fff}
+.cam-bar .shutter:active{transform:scale(.92)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:60;max-width:calc(100% - 32px);font-size:15px}
 .stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
 .stat div{border-radius:12px;padding:10px 12px;background:var(--surface-2)}
@@ -220,6 +238,7 @@ details.more summary .note{white-space:nowrap;overflow:hidden;text-overflow:elli
 <div id="app"></div>
 <div id="sheetRoot"></div>
 <div id="annRoot"></div>
+<div id="camRoot"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
@@ -575,9 +594,10 @@ async function renderItem(){
     <div class="rowx" style="justify-content:space-between"><h3>Photos <span class="mono muted" style="font-size:14px">${it.photos.length || ''}</span></h3><span class="note">Tap a photo to mark it up</span></div>
     <div class="photos" id="photoGrid">${it.photos.length ? '' : '<div class="note">No photos yet.</div>'}</div>
     <div class="addph">
-      <label class="btn primary filebtn">${I.cam}<span>Take photo</span><input type="file" id="camIn" accept="image/*" capture="environment"></label>
+      <button class="btn primary" data-act="burst" data-target="item">${I.cam}<span>Take photos</span></button>
       <label class="btn filebtn">${I.img}<span>From library</span><input type="file" id="libIn" accept="image/*" multiple></label>
     </div>
+    <label class="linkbtn filebtn camapp">Or use the phone's camera app (one photo)<input type="file" id="camIn" accept="image/*" capture="environment"></label>
     ${it.photos.length ? `<button class="btn block" data-act="itemphotos">${I.share}<span>Share or save this item's photos</span></button>` : ''}
     <div class="navrow" style="margin-top:8px">
       <button class="btn" data-act="goitem" data-id="${prev ? esc(prev.id) : ''}" ${prev ? '' : 'disabled'}>${I.back}<span>Previous</span></button>
@@ -816,9 +836,10 @@ async function renderGallery(){
   <div class="pad section stack">
     <div class="note">General photos of the project for the record. These are not punch items. Add a caption if it helps, and tap a photo to mark it up.</div>
     <div class="addph">
-      <label class="btn primary filebtn">${I.cam}<span>Take photo</span><input type="file" id="gCam" accept="image/*" capture="environment"></label>
+      <button class="btn primary" data-act="burst" data-target="site">${I.cam}<span>Take photos</span></button>
       <label class="btn filebtn">${I.img}<span>From library</span><input type="file" id="gLib" accept="image/*" multiple></label>
     </div>
+    <label class="linkbtn filebtn camapp">Or use the phone's camera app (one photo)<input type="file" id="gCam" accept="image/*" capture="environment"></label>
     <div class="gallery" id="gGrid">${n ? '' : '<div class="panel empty">No site photos yet. Take photos of the overall site, elevations, equipment and finished areas to keep with this walk.</div>'}</div>
     ${n ? `<button class="btn block" data-act="gexport">${I.share}<span>Share or save as JPEG files (${n})</span></button>
     <div class="note">Each photo is saved as its own JPEG. On a phone, Share lets you save them to Photos or Files, email them, or upload them to Dropbox.</div>` : ''}
@@ -899,6 +920,7 @@ app.addEventListener('click', async e => {
     if(pass) await syncTeamTemplate(pass); else { S.needPass = true; S.passMsg = 'Enter the team passcode to switch back to the team checklist.'; renderHome(); }
   }
   else if(act === 'gallery') go('gallery');
+  else if(act === 'burst'){ const target = b.dataset.target; openBurstCamera(shots => addShots(shots, target)); }
   else if(act === 'gannotate'){ const p = await DB.get('photos', b.dataset.pid); if(p) openAnnotator(p); }
   else if(act === 'gdel'){
     const pid = b.dataset.pid;
@@ -1011,6 +1033,94 @@ app.addEventListener('change', async e => {
     if(added && files.length === 1) openAnnotator(added);
   }
 });
+
+/* ---------- in-app camera: take many photos, then add them all at once ---------- */
+async function addShots(shots, target){
+  const w = S.walk; if(!w || !shots.length) return;
+  const it = target === 'item' ? w.items.find(x => x.id === S.itemId) : null;
+  if(target === 'item' && !it) return;
+  w.sitePhotos = w.sitePhotos || [];
+  let last = null;
+  for(const sh of shots){
+    const p = { id:'p' + uid(), src:sh.src, ann:null, shapes:[], w:sh.w, h:sh.h, taken:sh.taken, walkId:w.id, itemId: it ? it.id : null };
+    if(!it){ p.kind = 'site'; p.caption = ''; }
+    await DB.put('photos', p.id, p);
+    if(it) it.photos.push(p.id); else w.sitePhotos.push(p.id);
+    last = p;
+  }
+  saveWalk(true);
+  toast(`Added ${shots.length} photo${shots.length > 1 ? 's' : ''}`);
+  if(it && S.view === 'item' && S.itemId === it.id){ rerenderItem(); if(shots.length === 1 && last) openAnnotator(last); }
+  if(!it && S.view === 'gallery') rerenderGallery();
+}
+async function openBurstCamera(onDone){
+  const root = $('#camRoot');
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ toast('This browser cannot open the camera here. Use the phone\'s camera app link instead.'); return; }
+  const constraints = { audio:false, video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1920 }, height:{ ideal:1440 } } };
+  let stream;
+  try{ stream = await navigator.mediaDevices.getUserMedia(constraints); }
+  catch(e){
+    toast(e && e.name === 'NotAllowedError' ? 'Camera access is blocked. Allow camera access for this app in Settings, or use the phone\'s camera app link.' : 'Could not start the camera. Use the phone\'s camera app link instead.');
+    return;
+  }
+  const shots = []; let armedCancel = false;
+  root.innerHTML = `<div class="cam" role="dialog" aria-label="Camera">
+    <div class="cam-view"><video id="camV" playsinline muted autoplay></video><div class="cam-flash" id="camFlash"></div>
+      <div class="cam-count" id="camCount">Tap the shutter for each photo</div></div>
+    <div class="cam-strip" id="camStrip"></div>
+    <div class="cam-bar">
+      <button data-c="cancel" id="camCancel">Cancel</button>
+      <button class="shutter" data-c="shoot" aria-label="Take photo"></button>
+      <button data-c="done" class="done" id="camDone" disabled>Done</button>
+    </div>
+  </div>`;
+  document.body.style.overflow = 'hidden';
+  const video = $('#camV');
+  const attach = async st => { stream = st; video.srcObject = st; try{ await video.play(); }catch(_){} };
+  await attach(stream);
+  const stop = () => {
+    try{ stream.getTracks().forEach(t => t.stop()); }catch(_){}
+    document.removeEventListener('visibilitychange', onVis);
+    root.innerHTML = ''; root.onclick = null; document.body.style.overflow = '';
+  };
+  const onVis = async () => {
+    if(document.visibilityState !== 'visible' || !root.firstChild) return;
+    if(stream.getVideoTracks().every(t => t.readyState === 'ended')){
+      try{ await attach(await navigator.mediaDevices.getUserMedia(constraints)); }catch(_){ toast('The camera stopped. Tap Done to keep your photos.'); }
+    }
+  };
+  document.addEventListener('visibilitychange', onVis);
+  const refresh = () => {
+    $('#camCount').textContent = shots.length ? `${shots.length} photo${shots.length > 1 ? 's' : ''}` : 'Tap the shutter for each photo';
+    const done = $('#camDone'); done.disabled = !shots.length; done.textContent = shots.length ? `Done (${shots.length})` : 'Done';
+    $('#camStrip').innerHTML = shots.map((sh, i) => `<div class="t"><img src="${sh.src}" alt="Photo ${i + 1}"><button data-c="rm" data-i="${i}" aria-label="Remove photo ${i + 1}">×</button></div>`).join('');
+    const strip = $('#camStrip'); strip.scrollLeft = strip.scrollWidth;
+    armedCancel = false; $('#camCancel').textContent = 'Cancel';
+  };
+  const shoot = () => {
+    const vw = video.videoWidth, vh = video.videoHeight; if(!vw || !vh) return;
+    const sc = Math.min(1, 1600 / Math.max(vw, vh));
+    const w = Math.round(vw * sc), h = Math.round(vh * sc);
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    cv.getContext('2d').drawImage(video, 0, 0, w, h);
+    shots.push({ src: cv.toDataURL('image/jpeg', 0.85), w, h, taken: Date.now() });
+    const fl = $('#camFlash'); fl.classList.add('on'); setTimeout(() => fl.classList.remove('on'), 60);
+    try{ navigator.vibrate && navigator.vibrate(15); }catch(_){}
+    refresh();
+  };
+  root.onclick = e => {
+    const b = e.target.closest('[data-c]'); if(!b || b.disabled) return;
+    const c = b.dataset.c;
+    if(c === 'shoot') shoot();
+    else if(c === 'rm'){ shots.splice(Number(b.dataset.i), 1); refresh(); }
+    else if(c === 'done'){ const out = shots.slice(); stop(); onDone(out); }
+    else if(c === 'cancel'){
+      if(shots.length && !armedCancel){ armedCancel = true; b.textContent = `Discard ${shots.length}?`; return; }
+      stop();
+    }
+  };
+  refresh();
+}
 
 /* ---------- photos ---------- */
 function loadImage(src){ return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }); }

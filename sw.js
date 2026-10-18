@@ -1,5 +1,5 @@
 /* Punch Walk service worker: caches the app so it opens and runs with no signal. */
-const VERSION = 'punch-walk-v4';
+const VERSION = 'punch-walk-v5';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './vendor/xlsx.full.min.js', './vendor/jspdf.umd.min.js', './vendor/jszip.min.js',
