@@ -49,7 +49,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-#app{max-width:780px;margin:0 auto;padding-bottom:48px}
+#app{max-width:980px;margin:0 auto;padding-bottom:48px}
 .pad{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:.01em;text-wrap:balance;margin:0}
 h1{font-size:30px;line-height:1.05}
@@ -224,6 +224,28 @@ details.more summary .note{white-space:nowrap;overflow:hidden;text-overflow:elli
 .cam-bar .done:disabled{opacity:.4}
 .cam-bar .shutter{width:76px;height:76px;border-radius:50%;background:#fff;border:0;box-shadow:0 0 0 4px #000 inset,0 0 0 4px #fff}
 .cam-bar .shutter:active{transform:scale(.92)}
+.wbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wbtns .sitebtn{justify-content:center;font-size:15px;padding:8px 10px}
+.pendn{display:inline-block;min-width:22px;padding:0 6px;border-radius:11px;background:var(--bad);color:#fff;font-size:13px;line-height:22px;text-align:center}
+.vtag{color:var(--accent);font-weight:600}
+.warnpanel{border-color:var(--accent);background:var(--accent-soft)}
+.lightbox{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top,0px) 12px env(safe-area-inset-bottom,0px)}
+.lightbox img{max-width:100%;max-height:100%;object-fit:contain}
+.lb-close{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px}
+.ventry{border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px;background:var(--surface-2)}
+.vs-b-accepted{border-left-color:var(--ok)} .vs-b-denied{border-left-color:var(--bad)}
+.ve-head{line-height:1.3;overflow-wrap:anywhere}
+.ve-notes{background:var(--surface);border-radius:8px;padding:8px 10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.ve-photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px}
+.ve-ph{padding:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;aspect-ratio:4/3;background:var(--surface)}
+.ve-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ve-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ve-deny{display:flex;gap:8px;flex-wrap:wrap}
+.ve-deny input{flex:1;min-width:200px}
+.vstate{font-weight:700;font-size:14px;padding:3px 10px;border-radius:12px;background:var(--na-soft)}
+.vs-pending{background:var(--accent-soft);color:var(--accent)} .vs-accepted{background:var(--ok-soft);color:var(--ok)} .vs-denied{background:var(--bad-soft);color:var(--bad)}
+.vact{display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding-top:8px}
+.vact .vstate{align-self:flex-start}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:60;max-width:calc(100% - 32px);font-size:15px}
 .stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
 .stat div{border-radius:12px;padding:10px 12px;background:var(--surface-2)}
@@ -420,6 +442,7 @@ function render(){
   if(v === 'additem') return renderAddItem();
   if(v === 'report') return renderReport();
   if(v === 'gallery') return renderGallery();
+  if(v === 'vendors') return renderVendors();
 }
 
 function renderHome(){
@@ -447,7 +470,15 @@ function renderHome(){
         <label class="btn filebtn">${I.file}<span>Choose Excel and build file</span><input id="genFile" type="file" accept=".xlsx,.xlsm,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
       </div></details>
     </div>
+    ${S.pendingImport ? `<div class="panel stack warnpanel">
+      <div class="eyebrow">This walk is already on this device</div>
+      <div><strong>${esc(S.pendingImport.data.walk.stand || 'Walk')}</strong> · ${esc(fmtDate(S.pendingImport.data.walk.date))}</div>
+      <div class="note">On this device: updated ${esc(new Date(S.pendingImport.existing.updated || 0).toLocaleString())}. In the file: saved ${esc(new Date(S.pendingImport.data.exported || 0).toLocaleString())}.</div>
+      <button class="btn primary block" data-act="impreplace">Replace the copy on this device</button>
+      <button class="btn block" data-act="impcopy">Keep both</button>
+      <button class="btn block" data-act="impcancel">Cancel</button></div>` : ''}
     <button class="btn primary block" data-act="new" ${t ? '' : 'disabled'}>${I.plus}<span>Start a new punch walk</span></button>
+    <label class="btn block filebtn">${I.file}<span>Open a walk file</span><input type="file" id="walkFile" accept=".json,application/json"></label>
     <div class="rowx" style="justify-content:space-between;margin-top:8px"><h2>Walks on this phone</h2><span class="note mono">${walks.length}</span></div>
     ${walks.length ? walks.map(w => { const c = counts(w); return `
       <button class="walk" data-act="openwalk" data-id="${esc(w.id)}">
@@ -477,6 +508,9 @@ function renderWalkForm(w){
     <label class="f"><span>Walked by</span><input type="text" id="f-by" value="${esc(w.by)}" placeholder="Your name"></label>
     <label class="f"><span>Attendees</span><textarea id="f-att" placeholder="Names and companies on the walk">${esc(w.attendees)}</textarea></label>
     <button class="btn primary block" type="submit">${isNew ? 'Start walk' : 'Save details'}</button>
+    ${isNew ? '' : `<div class="panel stack"><div class="eyebrow">Move this walk to another device</div>
+      <div class="note">Save the full walk, with every photo, as one file. Open it in Punch Walk on your computer to keep managing the punch list there. Once it is saved, you can delete the walk from this phone.${w.lastExported ? ` Last saved ${esc(new Date(w.lastExported).toLocaleString())}.` : ''}</div>
+      <button class="btn block" type="button" data-act="exportwalk">${I.share}<span>Save full walk file</span></button></div>`}
     ${isNew ? '' : `<button class="btn danger block" type="button" data-act="delwalk" id="delWalkBtn">${I.trash}<span>Delete this walk</span></button>`}
   </form>`;
 }
@@ -504,7 +538,8 @@ function rowHTML(it){
       <span class="meta"><span class="no">#${esc(it.no || '—')}</span><span>${esc(it.resp || 'No resp.')}</span>
         ${it.photos.length ? `<span class="tag">${I.cam}${it.photos.length}</span>` : ''}
         ${it.notes ? `<span class="tag">${I.note}Note</span>` : ''}
-        ${it.fa ? '<span class="tag">Final approved</span>' : ''}</span>
+        ${it.fa ? '<span class="tag">Final approved</span>' : ''}
+        ${pendingFor(S.walk, it.id) ? '<span class="tag vtag">Vendor update to review</span>' : ''}</span>
     </button>
     <div class="seg" role="group" aria-label="Status">
       <button class="ok" data-act="st" data-st="complete" aria-pressed="${st==='complete'}" aria-label="Complete">${I.check}</button>
@@ -529,7 +564,10 @@ function renderWalk(){
   </div></header>
   <div class="whead pad">
     <div id="progWrap">${progBar(c)}<div class="note mono" style="margin-top:6px" id="progText">${c.total - c.todo} of ${c.total} checked · ${c.open} not complete</div></div>
-    <button class="btn sitebtn" data-act="gallery">${I.img}<span>Site photos (${(w.sitePhotos || []).length})</span><span class="muted" style="font-weight:500">General project photos</span></button>
+    <div class="wbtns">
+      <button class="btn sitebtn" data-act="gallery">${I.img}<span>Site photos (${(w.sitePhotos || []).length})</span></button>
+      <button class="btn sitebtn" data-act="vendors">${I.share}<span>Vendor updates${pendingCount(w) ? ` <b class="pendn">${pendingCount(w)}</b>` : ''}</span></button>
+    </div>
     <div class="chips" id="chips">${chipsHTML()}</div>
     <div class="filters">
       <select id="locSel" aria-label="Location"><option value="all">All locations</option>${w.locations.map(l => `<option value="${esc(l)}" ${S.loc===l?'selected':''}>${esc(l)}</option>`).join('')}</select>
@@ -591,6 +629,7 @@ async function renderItem(){
     <label class="check"><input type="checkbox" id="i-fa" ${it.fa ? 'checked' : ''} ${st==='complete' ? '' : 'disabled'}> Final approval given</label>
     <label class="f"><span>Responsible party</span><select id="i-resp">${respOptions(it.resp)}</select></label>
     <label class="f"><span>Notes / corrective action</span><textarea id="i-notes" placeholder="What needs to be corrected, by whom, by when">${esc(it.notes)}</textarea></label>
+    ${vendorActivityHTML(it)}
     <div class="rowx" style="justify-content:space-between"><h3>Photos <span class="mono muted" style="font-size:14px">${it.photos.length || ''}</span></h3><span class="note">Tap a photo to mark it up</span></div>
     <div class="photos" id="photoGrid">${it.photos.length ? '' : '<div class="note">No photos yet.</div>'}</div>
     <div class="addph">
@@ -868,6 +907,270 @@ async function exportSitePhotos(btn){
   await deliverPhotos(list, `${prefix} - Site photos`, btn, null);
 }
 
+/* ---------- shared file crypto (stand-number lock for vendor files) ---------- */
+const normStand = s => String(s || '').trim().toUpperCase().replace(/\s+/g, '');
+async function encJSON(obj, pass, format){
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), iter = 200000;
+  const key = await deriveKey(pass, salt, iter);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj))));
+  return { format, v:1, kdf:'PBKDF2-SHA256', iter, cipher:'AES-256-GCM', salt:b64(salt), iv:b64(iv), data:b64(ct) };
+}
+async function decJSON(enc, pass){
+  const key = await deriveKey(pass, unb64(enc.salt), enc.iter);
+  const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv:unb64(enc.iv) }, key, unb64(enc.data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function shrinkDataURL(src, max, q){
+  const im = await loadImage(src);
+  const sc = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+  const w = Math.round(im.naturalWidth * sc), h = Math.round(im.naturalHeight * sc);
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  cv.getContext('2d').drawImage(im, 0, 0, w, h);
+  return { src: cv.toDataURL('image/jpeg', q), w, h };
+}
+function showImage(src){
+  const root = $('#sheetRoot');
+  root.innerHTML = `<div class="lightbox" data-s="close" role="dialog" aria-label="Photo"><img src="${src}" alt="Photo"><button class="iconbtn lb-close" data-s="close" aria-label="Close">${I.x}</button></div>`;
+  root.onclick = e => { if(e.target.closest('[data-s="close"]')){ root.innerHTML = ''; root.onclick = null; } };
+}
+const allPhotoIds = w => [
+  ...w.items.flatMap(i => i.photos),
+  ...(w.sitePhotos || []),
+  ...(w.vendorSubs || []).flatMap(s => s.items.flatMap(e => e.photoIds || []))
+];
+
+/* ---------- full walk file: save and open on another device ---------- */
+async function exportWalkFile(btn){
+  const w = S.walk; if(!w) return;
+  btn.disabled = true;
+  try{
+    await flush();
+    const ids = [...new Set(allPhotoIds(w))];
+    const photos = (await Promise.all(ids.map(id => DB.get('photos', id)))).filter(Boolean);
+    w.lastExported = Date.now(); await DB.put('walks', w.id, w);
+    const file = { format:'punch-walk-walk', v:1, exported:w.lastExported, walk:w, photos };
+    const blob = new Blob([JSON.stringify(file)], { type:'application/json' });
+    showFileReady(`Punch Walk - ${safeName(w.stand)} - ${w.date} - full walk.json`, blob,
+      'Save this file to your computer, Files, OneDrive or Dropbox. Open it in Punch Walk on any device with "Open a walk file" on the home screen. It holds the whole walk, including every photo.');
+  }catch(err){ toast('Could not build the walk file.'); }
+  finally{ btn.disabled = false; }
+}
+async function readWalkFile(file){
+  let data;
+  try{ data = JSON.parse(await file.text()); }catch(e){ toast('That file is not a Punch Walk walk file.'); return; }
+  if(!data || data.format !== 'punch-walk-walk' || !data.walk || !Array.isArray(data.walk.items)){
+    toast(data && data.format === 'punch-walk-vendor-response' ? 'That is a vendor response. Open the walk, then load it under Vendor updates.' : 'That file is not a Punch Walk walk file.');
+    return;
+  }
+  const existing = S.walks.find(x => x.id === data.walk.id);
+  if(existing){ S.pendingImport = { data, existing }; renderHome(); window.scrollTo(0, 0); return; }
+  await importWalk(data, false);
+}
+async function importWalk(data, asCopy){
+  const w = JSON.parse(JSON.stringify(data.walk));
+  const photos = Array.isArray(data.photos) ? data.photos : [];
+  const map = {};
+  if(asCopy){
+    w.id = uid(); w.created = Date.now();
+    photos.forEach(p => { map[p.id] = 'p' + uid(); });
+    const m = id => map[id] || id;
+    w.items.forEach(it => { it.photos = (it.photos || []).map(m); });
+    w.sitePhotos = (w.sitePhotos || []).map(m);
+    (w.vendorSubs || []).forEach(s => s.items.forEach(e => { e.photoIds = (e.photoIds || []).map(m); }));
+  } else {
+    const old = S.walks.find(x => x.id === w.id);
+    if(old){ const keep = new Set(photos.map(p => p.id)); for(const pid of allPhotoIds(old)) if(!keep.has(pid)) await DB.del('photos', pid); }
+  }
+  for(const p of photos){ const np = Object.assign({}, p, { id: map[p.id] || p.id, walkId: w.id }); await DB.put('photos', np.id, np); }
+  w.items.forEach(it => { it.photos = it.photos || []; });
+  w.updated = Date.now();
+  await DB.put('walks', w.id, w);
+  S.pendingImport = null; await loadWalks(); renderHome();
+  toast(`Opened ${w.stand || 'walk'} with ${photos.length} photo${photos.length === 1 ? '' : 's'}`);
+}
+
+/* ---------- vendor exchange (CPM side) ---------- */
+const vendorPageURL = () => new URL('vendor.html', location.href).href;
+function pendingFor(w, itemId){
+  return (w.vendorSubs || []).some(s => s.items.some(e => e.itemId === itemId && e.review && e.review.state === 'pending'));
+}
+function pendingCount(w){ return (w.vendorSubs || []).reduce((n, s) => n + s.items.filter(e => e.review.state === 'pending').length, 0); }
+function vendorActivityHTML(it){
+  const w = S.walk; const rows = [];
+  (w.vendorSubs || []).forEach(s => s.items.filter(e => e.itemId === it.id).forEach(e => rows.push({ s, e })));
+  if(!rows.length) return '';
+  return `<div class="panel stack"><div class="eyebrow">Vendor updates</div>${rows.map(({ s, e }) => `
+    <div class="vact"><strong>${esc(s.vendor.name || s.vendor.email)}</strong> <span class="muted">· ${esc(new Date(s.submitted).toLocaleDateString())} · ${e.photoIds.length} photo${e.photoIds.length === 1 ? '' : 's'}</span>
+      <span class="vstate vs-${e.review.state}">${e.review.state === 'pending' ? 'Waiting for review' : e.review.state === 'accepted' ? 'Accepted' : 'Denied'}</span>
+      ${e.notes ? `<div class="note">${esc(e.notes)}</div>` : ''}</div>`).join('')}
+    <button class="btn" data-act="vendors">Review in Vendor updates</button></div>`;
+}
+async function renderVendors(){
+  const w = S.walk; w.vendorSubs = w.vendorSubs || [];
+  const cpmEmail = (await DB.get('meta', 'cpmEmail')) || '';
+  const openBy = {};
+  w.items.forEach(i => { if(i.status === 'open' || !i.status){ const k = i.resp || 'Unassigned'; openBy[k] = openBy[k] || { open:0, todo:0 }; openBy[k][i.status === 'open' ? 'open' : 'todo']++; } });
+  const vo = S.vendorOpts = S.vendorOpts || { resp:'', open:true, todo:false, photos:true };
+  const pend = pendingCount(w);
+  app.innerHTML = `
+  <header class="bar"><div class="bar-in pad">
+    <button class="iconbtn" data-act="backwalk" aria-label="Back to walk">${I.back}</button>
+    <div class="grow"><div class="title">Vendor updates</div><div class="sub">${esc(w.stand)} · ${pend} waiting for review</div></div>
+  </div></header>
+  <div class="pad section stack">
+    <div class="panel stack">
+      <div class="eyebrow">1 · Send tasks to a vendor</div>
+      <div class="note">Builds a task file locked with the stand number. The vendor opens it on the vendor page, adds completion photos and notes, marks tasks complete, and emails you a response file. Vendors cannot change your punch list.</div>
+      <label class="f"><span>Responsible party</span><select id="v-resp"><option value="">All responsible parties</option>${Object.entries(openBy).sort().map(([k, v]) => `<option value="${esc(k)}" ${vo.resp === k ? 'selected' : ''}>${esc(k)} (${v.open} not complete${v.todo ? `, ${v.todo} not checked` : ''})</option>`).join('')}</select></label>
+      <label class="check"><input type="checkbox" id="v-open" ${vo.open ? 'checked' : ''}> Include Not complete items</label>
+      <label class="check"><input type="checkbox" id="v-todo" ${vo.todo ? 'checked' : ''}> Include Not checked items</label>
+      <label class="check"><input type="checkbox" id="v-photos" ${vo.photos ? 'checked' : ''}> Include your photos (marked up)</label>
+      <label class="f"><span>Your email for vendor replies</span><input type="text" id="v-cpmEmail" inputmode="email" autocomplete="email" value="${esc(cpmEmail)}" placeholder="name@anchorpointmg.com"></label>
+      <div class="note" id="v-count"></div>
+      <button class="btn primary block" data-act="vbuild">${I.file}<span>Build vendor task file</span></button>
+      <button class="btn block" data-act="vcopy">Copy instructions for the vendor</button>
+    </div>
+    <div class="panel stack">
+      <div class="eyebrow">2 · Review vendor responses</div>
+      <label class="btn filebtn">${I.file}<span>Load a vendor response file</span><input type="file" id="vrFile" accept=".json,application/json"></label>
+      ${w.vendorSubs.length ? '' : '<div class="note">Responses you load appear here for you to accept or deny.</div>'}
+    </div>
+    <div id="vSubs" class="stack"></div>
+  </div>`;
+  updateVendorCount();
+  renderSubs();
+}
+function vendorItems(){
+  const w = S.walk, vo = S.vendorOpts;
+  return w.items.filter(i => ((vo.open && i.status === 'open') || (vo.todo && !i.status)) && (!vo.resp || (i.resp || 'Unassigned') === vo.resp));
+}
+function updateVendorCount(){ const el = $('#v-count'); if(el){ const n = vendorItems().length; el.textContent = `${n} item${n === 1 ? '' : 's'} will be in the file.`; } }
+function vendorInstructions(){
+  const w = S.walk;
+  return `Punch list for ${w.stand}${w.address ? ' – ' + w.address : ''}\n\n1. Save the attached task file.\n2. Open ${vendorPageURL()} on your computer or phone.\n3. Open the task file and enter the stand number as the password: ${w.stand}\n4. For each task, add completion photos and notes, and mark it complete.\n5. Create the response file and email it back to me.`;
+}
+async function buildVendorFile(btn){
+  const w = S.walk;
+  if(!normStand(w.stand)){ toast('Add the stand number in Walk details first. It is the vendor password.'); return; }
+  const items = vendorItems();
+  if(!items.length){ toast('No items match. Change the responsible party or include more statuses.'); return; }
+  const email = ($('#v-cpmEmail').value || '').trim();
+  btn.disabled = true; toast('Building vendor file…');
+  try{
+    const out = [];
+    for(const it of items){
+      const photos = [];
+      if(S.vendorOpts.photos) for(const pid of it.photos){ const p = await DB.get('photos', pid); if(p && p.kind !== 'vendor') photos.push((await shrinkDataURL(p.ann || p.src, 1024, 0.78)).src); }
+      out.push({ id:it.id, no:it.no, item:it.item, location:it.location, division:it.division, resp:it.resp, status:it.status || '', notes:it.notes || '', photos });
+    }
+    const pkg = { packageId:uid(), walkId:w.id, stand:w.stand, address:w.address || '', date:w.date, gc:w.gc || '', cpm:{ name:w.by || '', email }, resp:S.vendorOpts.resp || 'All', created:Date.now(), items:out };
+    const enc = await encJSON(pkg, normStand(w.stand), 'punch-walk-vendor-tasks');
+    w.vendorPackages = w.vendorPackages || []; w.vendorPackages.push({ id:pkg.packageId, resp:pkg.resp, created:pkg.created, count:out.length }); saveWalk(true);
+    const label = safeName(S.vendorOpts.resp || 'All vendors');
+    showFileReady(`Vendor tasks - ${safeName(w.stand)} - ${label} - ${w.date}.json`, new Blob([JSON.stringify(enc)], { type:'application/json' }),
+      `Email this file to the vendor with the vendor page link (${vendorPageURL()}). The password is the stand number. Use "Copy instructions for the vendor" for the email text.`);
+  }catch(err){ toast('Could not build the vendor file.'); }
+  finally{ btn.disabled = false; }
+}
+async function loadVendorResponse(file){
+  const w = S.walk;
+  let enc;
+  try{ enc = JSON.parse(await file.text()); }catch(e){ toast('That is not a vendor response file.'); return; }
+  if(!enc || enc.format !== 'punch-walk-vendor-response'){ toast(enc && enc.format === 'punch-walk-walk' ? 'That is a full walk file. Open it from the home screen.' : 'That is not a vendor response file.'); return; }
+  let r;
+  try{ r = await decJSON(enc, normStand(w.stand)); }catch(e){ toast(`This response does not belong to ${w.stand || 'this walk'}. Open the walk it was sent for.`); return; }
+  if(!r || r.walkId !== w.id){ toast(`This response is for a different walk${r && r.stand ? ' (' + r.stand + ')' : ''}.`); return; }
+  w.vendorSubs = w.vendorSubs || [];
+  if(w.vendorSubs.some(s => s.id === r.subId)){ toast('This response is already loaded.'); return; }
+  const str = (v, n) => String(v == null ? '' : v).slice(0, n);
+  const sub = { id:str(r.subId, 80) || uid(), packageId:str(r.packageId, 80), vendor:{ name:str(r.vendor && r.vendor.name, 120), company:str(r.vendor && r.vendor.company, 120), email:str(r.vendor && r.vendor.email, 160) }, submitted:Number(r.submitted) || Date.now(), imported:Date.now(), items:[] };
+  let photoCount = 0;
+  for(const e of (Array.isArray(r.items) ? r.items : [])){
+    if(!w.items.some(i => i.id === e.id)) continue;
+    const notes = str(e.notes, 5000).trim(), done = e.done === true;
+    const pics = (Array.isArray(e.photos) ? e.photos : []).filter(p => p && typeof p.src === 'string' && p.src.startsWith('data:image/'));
+    if(!notes && !done && !pics.length) continue;
+    const photoIds = [];
+    for(const p of pics){
+      const rec = { id:'p' + uid(), src:p.src, ann:null, shapes:[], w:Number(p.w) || 1280, h:Number(p.h) || 960, kind:'vendor', walkId:w.id, itemId:e.id, caption:'', taken:sub.submitted };
+      await DB.put('photos', rec.id, rec); photoIds.push(rec.id); photoCount++;
+    }
+    sub.items.push({ itemId:e.id, done, notes, photoIds, review:{ state:'pending' } });
+  }
+  if(!sub.items.length){ toast('The response has no updates for this walk.'); return; }
+  w.vendorSubs.push(sub); saveWalk(true);
+  toast(`Loaded ${sub.items.length} update${sub.items.length === 1 ? '' : 's'} from ${sub.vendor.name || sub.vendor.email || 'the vendor'}`);
+  renderVendors();
+}
+async function renderSubs(){
+  const w = S.walk, box = $('#vSubs'); if(!box) return;
+  const sub = $('.bar .sub'); if(sub) sub.textContent = `${w.stand} · ${pendingCount(w)} waiting for review`;
+  const subs = [...(w.vendorSubs || [])].sort((a, b) => b.imported - a.imported);
+  let html = '';
+  for(const s of subs){
+    const c = { pending:0, accepted:0, denied:0 }; s.items.forEach(e => c[e.review.state]++);
+    html += `<div class="panel stack sub" data-sub="${esc(s.id)}">
+      <div class="rowx" style="justify-content:space-between;align-items:flex-start">
+        <div class="grow"><strong>${esc(s.vendor.name || 'Vendor')}</strong>${s.vendor.company ? ` · ${esc(s.vendor.company)}` : ''}
+          <div class="note">${esc(s.vendor.email)} · sent ${esc(new Date(s.submitted).toLocaleString())}</div>
+          <div class="note">${c.pending} waiting · ${c.accepted} accepted · ${c.denied} denied</div></div>
+        ${s.vendor.email ? `<button class="btn" data-act="vemail" data-sub="${esc(s.id)}">Email vendor</button>` : ''}
+      </div>`;
+    for(let k = 0; k < s.items.length; k++){
+      const e = s.items[k], it = w.items.find(i => i.id === e.itemId); if(!it) continue;
+      const recs = (await Promise.all(e.photoIds.map(id => DB.get('photos', id)))).filter(Boolean);
+      const st = e.review.state;
+      html += `<div class="ventry vs-b-${st}">
+        <div class="ve-head"><span class="mono muted">#${esc(it.no || '—')}</span> <strong>${esc(it.item)}</strong></div>
+        <div class="note">${esc(it.location)} · ${esc(it.resp || 'Unassigned')} · ${e.done ? '<b>Vendor marked complete</b>' : 'Not marked complete by vendor'}</div>
+        ${e.notes ? `<div class="ve-notes">${esc(e.notes)}</div>` : ''}
+        ${recs.length ? `<div class="ve-photos">${recs.map(p => `<button class="ve-ph" data-act="vimg" data-pid="${esc(p.id)}" aria-label="View vendor photo"><img src="${p.src}" alt="Vendor photo"></button>`).join('')}</div>` : ''}
+        ${st === 'pending' ? `<div class="ve-actions">
+            <button class="btn primary" data-act="vaccept" data-sub="${esc(s.id)}" data-k="${k}">${I.check}<span>Accept</span></button>
+            <button class="btn danger" data-act="vdeny" data-sub="${esc(s.id)}" data-k="${k}">${I.x}<span>Deny</span></button></div>
+          <div class="ve-deny" id="deny-${esc(s.id)}-${k}" hidden><input type="text" id="reason-${esc(s.id)}-${k}" placeholder="Reason, e.g. paint still chipped at left jamb"><button class="btn danger" data-act="vdenyok" data-sub="${esc(s.id)}" data-k="${k}">Confirm deny</button></div>`
+        : `<div class="ve-actions"><span class="vstate vs-${st}">${st === 'accepted' ? 'Accepted' : 'Denied'}${e.review.reason ? ': ' + esc(e.review.reason) : ''}</span><button class="linkbtn" data-act="vundo" data-sub="${esc(s.id)}" data-k="${k}">Undo</button></div>`}
+      </div>`;
+    }
+    html += `</div>`;
+  }
+  box.innerHTML = html;
+}
+function subEntry(b){ const s = (S.walk.vendorSubs || []).find(x => x.id === b.dataset.sub); return s ? { s, e: s.items[Number(b.dataset.k)] } : {}; }
+function reviewEntry(s, e, state, reason){
+  const w = S.walk, it = w.items.find(i => i.id === e.itemId); if(!it || !e) return;
+  e.review = { state, reason: reason || '', at: Date.now(), prevStatus: it.status || '', prevNotes: it.notes || '', prevFa: !!it.fa };
+  if(state === 'accepted'){
+    it.status = 'complete';
+    e.photoIds.forEach(pid => { if(!it.photos.includes(pid)) it.photos.push(pid); });
+    const who = s.vendor.name || s.vendor.email || 'Vendor';
+    it.notes = (it.notes ? it.notes + '\n' : '') + `Completed by ${who} (${new Date(s.submitted).toLocaleDateString()})${e.notes ? ': ' + e.notes : ''}`;
+  } else {
+    it.status = 'open'; it.fa = false;
+  }
+  saveWalk(true);
+}
+function undoEntry(e){
+  const it = S.walk.items.find(i => i.id === e.itemId); if(!it) return;
+  const r = e.review;
+  if(r.state === 'accepted') it.photos = it.photos.filter(pid => !e.photoIds.includes(pid));
+  it.status = r.prevStatus || ''; it.notes = r.prevNotes || ''; it.fa = !!r.prevFa;
+  e.review = { state:'pending' }; saveWalk(true);
+}
+function emailVendor(s){
+  const w = S.walk; const lines = [];
+  const pick = st => s.items.filter(e => e.review.state === st).map(e => ({ e, it: w.items.find(i => i.id === e.itemId) })).filter(x => x.it);
+  const acc = pick('accepted'), den = pick('denied'), pen = pick('pending');
+  lines.push(s.vendor.name ? `Hello ${s.vendor.name},` : 'Hello,', '', `I reviewed the punch list updates you sent for ${w.stand}${w.address ? ' – ' + w.address : ''}.`, '');
+  if(acc.length){ lines.push('Accepted:'); acc.forEach(({ it }) => lines.push(`- #${it.no} ${it.item}`)); lines.push(''); }
+  if(den.length){ lines.push('Not accepted (please correct and resubmit):'); den.forEach(({ e, it }) => lines.push(`- #${it.no} ${it.item}${e.review.reason ? ' – ' + e.review.reason : ''}`)); lines.push(''); }
+  if(pen.length){ lines.push('Still under review:'); pen.forEach(({ it }) => lines.push(`- #${it.no} ${it.item}`)); lines.push(''); }
+  lines.push('Thank you,', w.by || '');
+  const url = `mailto:${encodeURIComponent(s.vendor.email)}?subject=${encodeURIComponent(`Punch list review – ${w.stand}`)}&body=${encodeURIComponent(lines.join('\n'))}`;
+  try{ navigator.clipboard && navigator.clipboard.writeText(lines.join('\n')).catch(() => {}); }catch(_){}
+  location.href = url;
+}
+
 /* ---------- events ---------- */
 app.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if(!b || b.disabled) return;
@@ -911,6 +1214,7 @@ app.addEventListener('click', async e => {
     const w = S.walk;
     for(const it of w.items) for(const pid of it.photos) await DB.del('photos', pid);
     for(const pid of (w.sitePhotos || [])) await DB.del('photos', pid);
+    for(const sb of (w.vendorSubs || [])) for(const e of sb.items) for(const pid of (e.photoIds || [])) await DB.del('photos', pid);
     await DB.del('walks', w.id); S.walk = null; await loadWalks(); go('home'); toast('Walk deleted');
   }
   else if(act === 'applyupdate'){ await flush(); if(S.updateReady) S.updateReady.postMessage('SKIP_WAITING'); }
@@ -920,6 +1224,19 @@ app.addEventListener('click', async e => {
     if(pass) await syncTeamTemplate(pass); else { S.needPass = true; S.passMsg = 'Enter the team passcode to switch back to the team checklist.'; renderHome(); }
   }
   else if(act === 'gallery') go('gallery');
+  else if(act === 'vendors') go('vendors');
+  else if(act === 'exportwalk') exportWalkFile(b);
+  else if(act === 'impreplace') importWalk(S.pendingImport.data, false);
+  else if(act === 'impcopy') importWalk(S.pendingImport.data, true);
+  else if(act === 'impcancel'){ S.pendingImport = null; renderHome(); }
+  else if(act === 'vbuild') buildVendorFile(b);
+  else if(act === 'vcopy'){ const t = vendorInstructions(); try{ await navigator.clipboard.writeText(t); toast('Instructions copied'); }catch(_){ showFileReady('Vendor instructions.txt', new Blob([t], { type:'text/plain' }), 'Copying is blocked here. Save or share the instructions instead.'); } }
+  else if(act === 'vimg'){ const p = await DB.get('photos', b.dataset.pid); if(p) showImage(p.src); }
+  else if(act === 'vaccept'){ const { s, e } = subEntry(b); if(e){ reviewEntry(s, e, 'accepted'); renderSubs(); toast('Accepted. Item marked Complete.'); } }
+  else if(act === 'vdeny'){ const box = document.getElementById(`deny-${b.dataset.sub}-${b.dataset.k}`); if(box){ box.hidden = false; const inp = box.querySelector('input'); inp && inp.focus(); } }
+  else if(act === 'vdenyok'){ const { s, e } = subEntry(b); if(e){ const r = (document.getElementById(`reason-${b.dataset.sub}-${b.dataset.k}`) || {}).value || ''; reviewEntry(s, e, 'denied', r.trim()); renderSubs(); toast('Denied. Item stays Not complete.'); } }
+  else if(act === 'vundo'){ const { e } = subEntry(b); if(e){ undoEntry(e); renderSubs(); } }
+  else if(act === 'vemail'){ const s = (S.walk.vendorSubs || []).find(x => x.id === b.dataset.sub); if(s) emailVendor(s); }
   else if(act === 'burst'){ const target = b.dataset.target; openBurstCamera(shots => addShots(shots, target)); }
   else if(act === 'gannotate'){ const p = await DB.get('photos', b.dataset.pid); if(p) openAnnotator(p); }
   else if(act === 'gdel'){
@@ -969,6 +1286,7 @@ app.addEventListener('input', e => {
   const id = e.target.id;
   if(id === 'q'){ S.q = e.target.value.trim(); renderList(); return; }
   if(e.target.classList.contains('g-cap')){ saveCaption(e.target.dataset.pid, e.target.value); return; }
+  if(id === 'v-cpmEmail'){ DB.put('meta', 'cpmEmail', e.target.value.trim()); return; }
   if(S.view === 'item'){
     const it = S.walk.items.find(x => x.id === S.itemId); if(!it) return;
     if(id === 'i-notes'){ it.notes = e.target.value; saveWalk(); }
@@ -1001,6 +1319,11 @@ app.addEventListener('change', async e => {
           'Upload this file to the GitHub repo, replacing template.enc.json. Share the passcode with the team separately, not in the same message.');
       }catch(err){ toast('Could not build the template file.'); }
     }
+  }
+  else if(id === 'walkFile'){ const f = e.target.files && e.target.files[0]; e.target.value = ''; if(f) readWalkFile(f); }
+  else if(id === 'vrFile'){ const f = e.target.files && e.target.files[0]; e.target.value = ''; if(f) loadVendorResponse(f); }
+  else if(id === 'v-resp' || id === 'v-open' || id === 'v-todo' || id === 'v-photos'){
+    S.vendorOpts.resp = $('#v-resp').value; S.vendorOpts.open = $('#v-open').checked; S.vendorOpts.todo = $('#v-todo').checked; S.vendorOpts.photos = $('#v-photos').checked; updateVendorCount();
   }
   else if(id === 'gCam' || id === 'gLib'){
     const files = [...(e.target.files || [])]; e.target.value = '';

@@ -32,6 +32,23 @@ Phone web app for 7 Brew stand hand-over punch walks. It installs to the home sc
 
 After that the app opens and runs with no signal. Use the home screen icon: iOS keeps home screen app data, but may clear browser-tab data after a period of non-use.
 
+## Move a walk to a computer
+1. On the phone, open the walk, tap the settings icon (Walk details), then **Save full walk file**.
+2. Save the file to OneDrive, Dropbox or Files, or email it to yourself.
+3. On the computer, open the app URL in Chrome, Edge or Safari, and click **Open a walk file**.
+4. Keep working there. Save a new full walk file whenever you want a copy to move back or archive.
+
+The file holds everything: items, notes, photos, site photos and vendor updates. Once it is saved, the walk can be deleted from the phone. Opening a file for a walk that is already on the device offers **Replace** or **Keep both**.
+
+## Vendor updates (file exchange)
+1. In the walk, tap **Vendor updates**. Pick the responsible party, enter your email, and tap **Build vendor task file**.
+2. Email the task file to the vendor with the vendor page link (`vendor.html` on this site) and the stand number as the password. **Copy instructions for the vendor** gives the email text.
+3. The vendor opens the page, loads the file, enters the stand number and their name and email, then adds completion photos and notes and marks tasks complete. They cannot change the original items. Their work is saved in their browser until they send it.
+4. The vendor clicks **Create response file** and emails it back.
+5. In the walk, tap **Vendor updates > Load a vendor response file**. Accept marks the item Complete and adds the vendor photos and notes; Deny keeps it Not complete with a reason. **Email vendor** opens a drafted email with the results.
+
+Vendor files are encrypted with the stand number (AES-256-GCM, PBKDF2). Stand numbers are not secret, so treat this as light protection. Vendors never need the team passcode.
+
 ## Update the checklist
 1. In the app, open Template options > Update the team checklist.
 2. Enter a passcode (a new one or the current one) and choose the updated Excel workbook.

@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Punch Walk Vendor Portal</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0b5d8a">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+@font-face{font-family:"Barlow";font-weight:400;font-display:swap;src:url(fonts/barlow-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow";font-weight:500;font-display:swap;src:url(fonts/barlow-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow";font-weight:600;font-display:swap;src:url(fonts/barlow-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:700;font-display:swap;src:url(fonts/barlow-condensed-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:500;font-display:swap;src:url(fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2")}
+/* Layout: one centered column; task cards stack; sticky footer holds the response action */
+:root{
+  --bg:#eef1f3; --surface:#ffffff; --surface-2:#f6f8f9; --ink:#15212b; --muted:#5b6872; --line:#d3dade;
+  --accent:#0b5d8a; --accent-ink:#ffffff; --accent-soft:#dcebf3; --ok:#1f7a3f; --ok-soft:#ddf1e3; --bad:#c2321f; --bad-soft:#fbe3df;
+  --font-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif; --font-body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --font-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px)
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0f161c; --surface:#18222a; --surface-2:#1d2932; --ink:#e8edf0; --muted:#94a2ac; --line:#2c3a45;
+  --accent:#4fa8d8; --accent-ink:#06131c; --accent-soft:#16364a; --ok:#4cc27a; --ok-soft:#163a25; --bad:#ff6b57; --bad-soft:#47201a; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink)}
+body{margin:0;font-family:var(--font-body);font-size:16px;line-height:1.45}
+[hidden]{display:none!important}
+img{max-width:100%}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:900px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 120px}
+header.top{background:var(--surface);border-bottom:1px solid var(--line)}
+header.top .in{max-width:900px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px));display:flex;gap:12px;align-items:center}
+.logo{width:36px;height:36px;border-radius:8px}
+h1,h2,h3{font-family:var(--font-display);font-weight:700;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:24px} h2{font-size:22px} h3{font-size:18px}
+.eyebrow{font-family:var(--font-display);font-weight:700;font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)} .note{font-size:14px;color:var(--muted)} .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.stack{display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.btn{min-height:46px;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:10px 16px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.block{width:100%}
+label.f{display:flex;flex-direction:column;gap:6px}
+label.f span{font-family:var(--font-display);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:13px;color:var(--muted)}
+input[type=text],input[type=email],input[type=password],textarea{width:100%;min-height:46px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 12px;font-size:16px}
+textarea{min-height:88px;resize:vertical}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:28px 16px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;background:var(--surface-2)}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.filebtn{position:relative;overflow:hidden}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.err{color:var(--bad);font-weight:600;font-size:14px}
+.banner{background:var(--accent-soft);border-radius:12px;padding:12px 14px;font-size:14px}
+.summary{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{min-height:38px;border-radius:19px;border:1px solid var(--line);background:var(--surface-2);padding:6px 14px;font-weight:600;font-size:14px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.task{background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--line);border-radius:14px;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.task.updated{border-left-color:var(--accent)} .task.done{border-left-color:var(--ok)}
+@media (max-width:720px){.task{grid-template-columns:1fr}}
+.orig{display:flex;flex-direction:column;gap:8px;min-width:0}
+.orig .txt{font-weight:600;font-size:17px;line-height:1.3;overflow-wrap:anywhere}
+.meta{display:flex;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.meta span{background:var(--surface-2);border-radius:6px;padding:2px 8px}
+.cpmnote{background:var(--surface-2);border-radius:8px;padding:8px 10px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px}
+.thumb{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--surface-2)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .view{position:absolute;inset:0;border:0;background:none;padding:0}
+.thumb .rm{position:absolute;top:3px;right:3px;width:28px;height:28px;border-radius:7px;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:18px;line-height:1}
+.mine{display:flex;flex-direction:column;gap:10px;background:var(--surface-2);border-radius:12px;padding:12px;min-width:0}
+.mine.dragover{outline:3px dashed var(--accent)}
+.check{display:flex;gap:10px;align-items:center;min-height:44px;font-weight:600}
+.check input{width:22px;height:22px;accent-color:var(--ok)}
+.foot{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:5}
+.foot .in{max-width:900px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.lightbox{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;padding:16px}
+.lightbox img{max-width:100%;max-height:100%;object-fit:contain}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:30;max-width:calc(100% - 32px)}
+.drafts .d{display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1px solid var(--line);padding-top:10px;flex-wrap:wrap}
+code.copy{font-family:var(--font-mono);font-size:13px;background:var(--surface-2);padding:2px 6px;border-radius:6px;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<header class="top"><div class="in"><img class="logo" src="icons/icon-192.png" alt=""><div><h1>Punch Walk Vendor Portal</h1><div class="note">Add completion photos and notes for your punch list tasks</div></div></div></header>
+<main class="wrap" id="app"></main>
+<div class="foot" id="foot" hidden><div class="in"><div id="footText" class="note"></div><button class="btn primary" id="makeResp">Create response file</button></div></div>
+<div id="overlay"></div>
+<script>
+(function(){
+"use strict";
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const normStand = s => String(s || '').trim().toUpperCase().replace(/\s+/g, '');
+const STATUS = { open:'Not complete', '':'Not checked', complete:'Complete', na:'N/A' };
+let toastT;
+function toast(m){ let t = $('.toast'); if(!t){ t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role','status'); document.body.appendChild(t); } t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3000); }
+
+/* crypto: must match the Punch Walk app */
+const b64 = u8 => { let s = ''; for(let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); };
+const unb64 = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+async function deriveKey(pass, salt, iter){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:iter, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+async function encJSON(obj, pass, format){
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), iter = 200000;
+  const key = await deriveKey(pass, salt, iter);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj))));
+  return { format, v:1, kdf:'PBKDF2-SHA256', iter, cipher:'AES-256-GCM', salt:b64(salt), iv:b64(iv), data:b64(ct) };
+}
+async function decJSON(enc, pass){
+  const key = await deriveKey(pass, unb64(enc.salt), enc.iter);
+  const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv:unb64(enc.iv) }, key, unb64(enc.data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+/* drafts saved in this browser so a vendor can come back later */
+const store = {
+  db:null,
+  async open(){ try{ this.db = await new Promise((res, rej) => { const r = indexedDB.open('punch-walk-vendor', 1); r.onupgradeneeded = () => r.result.createObjectStore('drafts'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }catch(e){ this.db = null; } },
+  tx(mode, fn){ return new Promise((res, rej) => { const t = this.db.transaction('drafts', mode); const q = fn(t.objectStore('drafts')); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); }); },
+  async get(k){ if(!this.db) return null; try{ return await this.tx('readonly', s => s.get(k)); }catch(e){ return null; } },
+  async put(k, v){ if(!this.db) return; try{ await this.tx('readwrite', s => s.put(v, k)); }catch(e){ toast('Could not save your progress in this browser.'); } },
+  async del(k){ if(!this.db) return; try{ await this.tx('readwrite', s => s.delete(k)); }catch(e){} },
+  async all(){ if(!this.db) return []; try{ return await this.tx('readonly', s => s.getAll()); }catch(e){ return []; } }
+};
+
+const S = { enc:null, pkg:null, draft:null, filter:'all' };
+let saveT;
+function saveDraft(){ clearTimeout(saveT); saveT = setTimeout(() => { if(S.draft){ S.draft.saved = Date.now(); store.put(S.draft.packageId, S.draft); } }, 400); }
+
+/* ---------- screens ---------- */
+async function startScreen(err){
+  $('#foot').hidden = true;
+  const drafts = (await store.all()).sort((a, b) => b.saved - a.saved);
+  app.innerHTML = `<div class="stack">
+    <div class="panel stack">
+      <h2>Open your task file</h2>
+      <div class="note">The project manager emailed you a task file (a .json file). Save it to this computer or phone, then open it here. Your password is the stand number.</div>
+      <div class="drop" id="drop">
+        <strong>Drag the task file here</strong><span class="note">or</span>
+        <label class="btn primary filebtn">Choose task file<input type="file" id="pkgFile" accept=".json,application/json"></label>
+      </div>
+      ${err ? `<div class="err">${esc(err)}</div>` : ''}
+    </div>
+    ${drafts.length ? `<div class="panel stack drafts"><h3>Continue where you left off</h3>${drafts.map(d => `<div class="d"><div><strong>${esc(d.label || 'Task file')}</strong><div class="note">Last saved ${esc(new Date(d.saved).toLocaleString())} · ${Object.keys(d.updates || {}).length} task${Object.keys(d.updates || {}).length === 1 ? '' : 's'} updated</div></div><div class="chips"><button class="btn" data-resume="${esc(d.packageId)}">Continue</button><button class="btn" data-forget="${esc(d.packageId)}">Remove</button></div></div>`).join('')}</div>` : ''}
+    <div class="note">Your photos and notes stay in this browser until you create the response file and email it back. Nothing is uploaded to a server.</div>
+  </div>`;
+  const drop = $('#drop');
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => { const f = e.dataTransfer.files && e.dataTransfer.files[0]; if(f) readPkg(f); });
+  $('#pkgFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if(f) readPkg(f); });
+  app.querySelectorAll('[data-resume]').forEach(b => b.addEventListener('click', async () => { const d = await store.get(b.dataset.resume); if(d){ S.enc = d.enc; S.resume = d; passScreen(); } }));
+  app.querySelectorAll('[data-forget]').forEach(b => b.addEventListener('click', async () => {
+    if(b.dataset.armed){ await store.del(b.dataset.forget); startScreen(); } else { b.dataset.armed = '1'; b.textContent = 'Remove saved work?'; }
+  }));
+}
+async function readPkg(file){
+  let enc;
+  try{ enc = JSON.parse(await file.text()); }catch(e){ return startScreen('That file could not be read. Choose the task file from your email.'); }
+  if(!enc || enc.format !== 'punch-walk-vendor-tasks') return startScreen(enc && enc.format === 'punch-walk-vendor-response' ? 'That is a response file. Open the task file you received instead.' : 'That is not a Punch Walk task file.');
+  S.enc = enc; S.resume = null; passScreen();
+}
+function passScreen(err){
+  app.innerHTML = `<div class="panel stack" style="max-width:520px">
+    <h2>Enter the password</h2>
+    <div class="note">The password is the stand number for this project, for example CIPM0169.</div>
+    <form id="passForm" class="stack" autocomplete="off">
+      <label class="f"><span>Stand number</span><input type="password" id="pass" autocapitalize="characters" autocorrect="off" spellcheck="false" required></label>
+      ${err ? `<div class="err">${esc(err)}</div>` : ''}
+      <button class="btn primary" type="submit">Open tasks</button>
+      <button class="btn" type="button" id="back">Choose a different file</button>
+    </form></div>`;
+  $('#pass').focus();
+  $('#back').addEventListener('click', () => startScreen());
+  $('#passForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = e.target.querySelector('[type=submit]'); btn.disabled = true; btn.textContent = 'Checking…';
+    try{
+      S.pkg = await decJSON(S.enc, normStand($('#pass').value));
+      S.pass = normStand($('#pass').value);
+    }catch(err){ return passScreen('That stand number does not match this task file.'); }
+    const existing = S.resume || await store.get(S.pkg.packageId);
+    S.draft = existing || { packageId:S.pkg.packageId, enc:S.enc, label:`${S.pkg.stand}${S.pkg.address ? ' – ' + S.pkg.address : ''} (${S.pkg.items.length} tasks)`, vendor:{ name:'', company:'', email:'' }, updates:{}, saved:Date.now() };
+    S.draft.enc = S.enc;
+    if(S.draft.vendor && S.draft.vendor.email) taskScreen(); else vendorScreen();
+  });
+}
+function vendorScreen(err){
+  const v = S.draft.vendor || {};
+  app.innerHTML = `<div class="panel stack" style="max-width:620px">
+    <h2>Your contact information</h2>
+    <div class="note">${esc(S.pkg.cpm.name || 'The project manager')} will use your email to let you know when each task is accepted or needs more work.</div>
+    <form id="vForm" class="stack" autocomplete="on" novalidate>
+      <label class="f"><span>Your name</span><input type="text" id="vName" autocomplete="name" value="${esc(v.name)}" required></label>
+      <label class="f"><span>Company</span><input type="text" id="vCo" autocomplete="organization" value="${esc(v.company)}"></label>
+      <label class="f"><span>Email address</span><input type="email" id="vEmail" autocomplete="email" value="${esc(v.email)}" required></label>
+      ${err ? `<div class="err">${esc(err)}</div>` : ''}
+      <button class="btn primary" type="submit">Continue to tasks</button>
+    </form></div>`;
+  $('#vName').focus();
+  $('#vForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const email = $('#vEmail').value.trim();
+    if(!$('#vName').value.trim()) return vendorScreen('Enter your name.');
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return vendorScreen('Enter a valid email address, for example name@company.com.');
+    S.draft.vendor = { name:$('#vName').value.trim(), company:$('#vCo').value.trim(), email };
+    saveDraft(); taskScreen();
+  });
+}
+const upd = id => S.draft.updates[id] || (S.draft.updates[id] = { notes:'', done:false, photos:[] });
+const hasUpd = u => u && (u.done || (u.notes || '').trim() || (u.photos || []).length);
+function taskScreen(){
+  const p = S.pkg, v = S.draft.vendor;
+  app.innerHTML = `<div class="stack">
+    <div class="panel stack">
+      <div class="eyebrow">Stand ${esc(p.stand)}</div>
+      <h2>${esc(p.address || 'Punch list')}</h2>
+      <div class="note">Punch walk ${esc(p.date)}${p.gc ? ' · GC: ' + esc(p.gc) : ''} · Sent by ${esc(p.cpm.name || 'the project manager')}${p.cpm.email ? ' (' + esc(p.cpm.email) + ')' : ''}</div>
+      <div class="note">Signed in as <strong>${esc(v.name)}</strong>${v.company ? ', ' + esc(v.company) : ''} · ${esc(v.email)} · <button class="chip" id="editMe" style="min-height:30px;padding:2px 10px">Change</button></div>
+      <div class="banner">For each task: add photos showing the finished work, add a note if needed, and check "Mark this task complete". When you are done, click <strong>Create response file</strong> and email it back. The original task details cannot be changed here.</div>
+    </div>
+    <div class="summary"><div class="chips">
+      <button class="chip" data-f="all">All tasks</button><button class="chip" data-f="todo">Not updated</button><button class="chip" data-f="upd">Updated</button>
+    </div><div class="note mono" id="sumText"></div></div>
+    <div class="stack" id="tasks"></div>
+  </div>`;
+  $('#editMe').addEventListener('click', () => vendorScreen());
+  app.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { S.filter = b.dataset.f; renderTasks(); }));
+  $('#foot').hidden = false;
+  renderTasks();
+}
+function refreshSummary(){
+  const n = S.pkg.items.length, u = S.pkg.items.filter(i => hasUpd(S.draft.updates[i.id])).length, d = S.pkg.items.filter(i => (S.draft.updates[i.id] || {}).done).length;
+  const ph = Object.values(S.draft.updates).reduce((a, x) => a + (x.photos || []).length, 0);
+  $('#sumText').textContent = `${u} of ${n} updated · ${d} marked complete · ${ph} photos`;
+  $('#footText').textContent = u ? `${u} task${u === 1 ? '' : 's'} ready to send` : 'Update at least one task to create a response file';
+  $('#makeResp').disabled = !u;
+  app.querySelectorAll('[data-f]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === S.filter)));
+}
+function renderTasks(){
+  const list = S.pkg.items.filter(i => S.filter === 'all' || (S.filter === 'upd' ? hasUpd(S.draft.updates[i.id]) : !hasUpd(S.draft.updates[i.id])));
+  $('#tasks').innerHTML = list.length ? list.map(taskHTML).join('') : '<div class="panel note">No tasks in this view.</div>';
+  list.forEach(i => bindTask(i.id));
+  refreshSummary();
+}
+function taskHTML(i){
+  const u = S.draft.updates[i.id] || { notes:'', done:false, photos:[] };
+  return `<article class="task ${u.done ? 'done' : hasUpd(u) ? 'updated' : ''}" id="t-${esc(i.id)}">
+    <div class="orig">
+      <div class="meta"><span class="mono">#${esc(i.no || '—')}</span><span>${esc(i.location)}</span><span>${esc(i.resp || 'Unassigned')}</span><span>${esc(STATUS[i.status] || 'Not complete')}</span></div>
+      <div class="txt">${esc(i.item)}</div>
+      ${i.notes ? `<div><div class="eyebrow">Notes from the project manager</div><div class="cpmnote">${esc(i.notes)}</div></div>` : ''}
+      ${i.photos.length ? `<div><div class="eyebrow">Project manager's photos</div><div class="thumbs">${i.photos.map((src, k) => `<div class="thumb"><img src="${src}" alt="Issue photo ${k + 1}"><button class="view" data-view="${esc(i.id)}:o:${k}" aria-label="Enlarge photo"></button></div>`).join('')}</div></div>` : ''}
+    </div>
+    <div class="mine" data-drop="${esc(i.id)}">
+      <div class="eyebrow">Your update</div>
+      <div class="thumbs" id="ph-${esc(i.id)}">${u.photos.map((p, k) => `<div class="thumb"><img src="${p.src}" alt="Your photo ${k + 1}"><button class="view" data-view="${esc(i.id)}:m:${k}" aria-label="Enlarge photo"></button><button class="rm" data-rm="${esc(i.id)}:${k}" aria-label="Remove photo">×</button></div>`).join('')}</div>
+      <label class="btn filebtn">Add completion photos<input type="file" accept="image/*" multiple data-add="${esc(i.id)}"></label>
+      <div class="note">Or drag photos onto this box.</div>
+      <label class="f"><span>Your notes</span><textarea data-notes="${esc(i.id)}" placeholder="What was done, when, and anything the PM should know">${esc(u.notes)}</textarea></label>
+      <label class="check"><input type="checkbox" data-done="${esc(i.id)}" ${u.done ? 'checked' : ''}> Mark this task complete</label>
+    </div>
+  </article>`;
+}
+function bindTask(id){
+  const card = document.getElementById('t-' + id); if(!card) return;
+  const box = card.querySelector('[data-drop]');
+  ['dragenter','dragover'].forEach(ev => box.addEventListener(ev, e => { e.preventDefault(); box.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(ev => box.addEventListener(ev, e => { e.preventDefault(); box.classList.remove('dragover'); }));
+  box.addEventListener('drop', e => addPhotos(id, [...(e.dataTransfer.files || [])]));
+}
+function updateCard(id){
+  const card = document.getElementById('t-' + id); if(!card) return;
+  const item = S.pkg.items.find(i => i.id === id);
+  card.outerHTML = taskHTML(item); bindTask(id); refreshSummary();
+}
+function loadImage(src){ return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }); }
+async function addPhotos(id, files){
+  files = files.filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|heic|webp)$/i.test(f.name));
+  if(!files.length) return;
+  toast(`Adding ${files.length} photo${files.length > 1 ? 's' : ''}…`);
+  const u = upd(id);
+  for(const f of files){
+    const url = URL.createObjectURL(f);
+    try{
+      const im = await loadImage(url);
+      const sc = Math.min(1, 1280 / Math.max(im.naturalWidth, im.naturalHeight));
+      const w = Math.round(im.naturalWidth * sc), h = Math.round(im.naturalHeight * sc);
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(im, 0, 0, w, h);
+      u.photos.push({ id:uid(), src:cv.toDataURL('image/jpeg', 0.8), w, h });
+    }catch(e){ toast(`${f.name} could not be read. Use JPEG or PNG photos.`); }
+    finally{ URL.revokeObjectURL(url); }
+  }
+  saveDraft(); updateCard(id);
+}
+app.addEventListener('change', e => {
+  const t = e.target;
+  if(t.dataset.add){ const files = [...(t.files || [])]; t.value = ''; addPhotos(t.dataset.add, files); }
+  else if(t.dataset.done){ upd(t.dataset.done).done = t.checked; saveDraft(); updateCard(t.dataset.done); }
+});
+app.addEventListener('input', e => {
+  const t = e.target;
+  if(t.dataset.notes){ upd(t.dataset.notes).notes = t.value; saveDraft(); refreshSummary(); const c = document.getElementById('t-' + t.dataset.notes); if(c) c.classList.toggle('updated', !!hasUpd(S.draft.updates[t.dataset.notes])); }
+});
+app.addEventListener('click', e => {
+  const rm = e.target.closest('[data-rm]');
+  if(rm){ const [id, k] = rm.dataset.rm.split(':'); upd(id).photos.splice(Number(k), 1); saveDraft(); updateCard(id); return; }
+  const vw = e.target.closest('[data-view]');
+  if(vw){
+    const [id, kind, k] = vw.dataset.view.split(':');
+    const src = kind === 'o' ? S.pkg.items.find(i => i.id === id).photos[k] : upd(id).photos[k].src;
+    const ov = $('#overlay'); ov.innerHTML = `<div class="lightbox" role="dialog" aria-label="Photo"><img src="${src}" alt="Photo"></div>`;
+    ov.firstChild.addEventListener('click', () => { ov.innerHTML = ''; });
+  }
+});
+
+/* ---------- response file ---------- */
+$('#makeResp').addEventListener('click', async () => {
+  const btn = $('#makeResp'); btn.disabled = true; btn.textContent = 'Creating…';
+  try{
+    const items = S.pkg.items.filter(i => hasUpd(S.draft.updates[i.id])).map(i => {
+      const u = S.draft.updates[i.id];
+      return { id:i.id, done:!!u.done, notes:(u.notes || '').trim(), photos:u.photos.map(p => ({ src:p.src, w:p.w, h:p.h })) };
+    });
+    const resp = { subId:uid(), packageId:S.pkg.packageId, walkId:S.pkg.walkId, stand:S.pkg.stand, vendor:S.draft.vendor, submitted:Date.now(), items };
+    const enc = await encJSON(resp, S.pass, 'punch-walk-vendor-response');
+    const safe = s => String(s || '').replace(/[\\/:*?"<>|]+/g, '-').trim();
+    const name = `Punch response - ${safe(S.pkg.stand)} - ${safe(S.draft.vendor.company || S.draft.vendor.name)} - ${new Date().toISOString().slice(0, 10)}.json`;
+    const blob = new Blob([JSON.stringify(enc)], { type:'application/json' });
+    showDone(name, blob, items.length);
+  }catch(err){ toast('Could not create the response file.'); }
+  finally{ btn.disabled = false; btn.textContent = 'Create response file'; }
+});
+function showDone(name, blob, n){
+  const p = S.pkg, mb = blob.size / 1048576;
+  const file = new File([blob], name, { type:'application/json' });
+  let canShare = false; try{ canShare = !!(navigator.canShare && navigator.canShare({ files:[file] })); }catch(e){}
+  const subject = `Punch list response – ${p.stand}`;
+  const body = `Attached is my punch list response for ${p.stand}${p.address ? ' – ' + p.address : ''} (${n} task${n === 1 ? '' : 's'} updated).\n\n${S.draft.vendor.name}${S.draft.vendor.company ? '\n' + S.draft.vendor.company : ''}\n${S.draft.vendor.email}`;
+  const mailto = `mailto:${encodeURIComponent(p.cpm.email || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const ov = $('#overlay');
+  ov.innerHTML = `<div class="lightbox" style="background:rgba(0,0,0,.55)"><div class="panel stack" role="dialog" aria-label="Response file ready" style="max-width:560px;width:100%">
+    <h2>Response file ready</h2>
+    <div><strong style="overflow-wrap:anywhere">${esc(name)}</strong> <span class="note mono">${mb >= 1 ? mb.toFixed(1) + ' MB' : Math.max(1, Math.round(blob.size / 1024)) + ' KB'}</span></div>
+    ${mb > 20 ? '<div class="err">This file is larger than most email services allow (about 20 MB). Remove some photos, or send the tasks in two responses.</div>' : ''}
+    <ol class="note" style="margin:0;padding-left:20px"><li>Save the file.</li><li>Email it to ${esc(p.cpm.name || 'the project manager')}${p.cpm.email ? ` at <code class="copy">${esc(p.cpm.email)}</code>` : ''} as an attachment.</li></ol>
+    <button class="btn primary block" id="dlBtn">Save response file</button>
+    ${canShare ? '<button class="btn block" id="shBtn">Share (email from this phone)</button>' : ''}
+    <a class="btn block" href="${mailto}" style="text-decoration:none">Start the email</a>
+    <div class="note">Your work stays saved in this browser, so you can add more and send another response later.</div>
+    <button class="btn block" id="closeBtn">Close</button>
+  </div></div>`;
+  $('#dlBtn').addEventListener('click', () => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000); toast('Saved'); });
+  if(canShare) $('#shBtn').addEventListener('click', async () => { try{ await navigator.share({ files:[file] }); }catch(e){ if(e && e.name !== 'AbortError') toast('Sharing failed. Save the file instead.'); } });
+  $('#closeBtn').addEventListener('click', () => { ov.innerHTML = ''; });
+}
+
+store.open().then(() => startScreen());
+})();
+</script>
+</body>
+</html>
