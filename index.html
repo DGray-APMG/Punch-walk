@@ -201,6 +201,11 @@ details.more summary .note{white-space:nowrap;overflow:hidden;text-overflow:elli
 .prev-row .grow{overflow-wrap:anywhere}
 .pill{width:10px;height:10px;border-radius:50%;flex:none;margin-top:5px}
 .ann-ta{position:fixed;z-index:52;transform-origin:0 0;background:transparent;border:0;outline:none;resize:none;overflow:hidden;font-family:"Barlow","Helvetica Neue",Arial,sans-serif;font-weight:600;font-size:16px;line-height:1.18;margin:0;box-sizing:border-box;caret-color:currentColor;-webkit-text-size-adjust:100%;white-space:pre-wrap;overflow-wrap:anywhere}
+.sitebtn{min-height:46px;justify-content:flex-start;gap:10px;padding:8px 14px;flex-wrap:wrap}
+.sitebtn .muted{font-size:13px;margin-left:auto}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.gcard{display:flex;flex-direction:column;gap:6px;min-width:0}
+.gcard input{min-height:42px;padding:8px 10px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:60;max-width:calc(100% - 32px);font-size:15px}
 .stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
 .stat div{border-radius:12px;padding:10px 12px;background:var(--surface-2)}
@@ -369,7 +374,7 @@ function orderLocs(list){
 
 /* ---------- counts ---------- */
 function counts(w){
-  const c = { total:w.items.length, complete:0, open:0, na:0, todo:0, photos:0 };
+  const c = { total:w.items.length, complete:0, open:0, na:0, todo:0, photos:0, site:(w.sitePhotos || []).length };
   w.items.forEach(it => { if(it.status === 'complete') c.complete++; else if(it.status === 'open') c.open++; else if(it.status === 'na') c.na++; else c.todo++; c.photos += it.photos.length; });
   return c;
 }
@@ -395,6 +400,7 @@ function render(){
   if(v === 'item') return renderItem();
   if(v === 'additem') return renderAddItem();
   if(v === 'report') return renderReport();
+  if(v === 'gallery') return renderGallery();
 }
 
 function renderHome(){
@@ -429,7 +435,7 @@ function renderHome(){
         <div class="top"><span class="stand">${esc(w.stand || 'Untitled stand')}</span><span class="note mono">${esc(fmtDate(w.date))}</span></div>
         <div class="note">${esc(w.address || '')}</div>
         ${progBar(c)}
-        <div class="note mono" style="margin-top:6px">${c.total - c.todo}/${c.total} checked · ${c.open} not complete · ${c.photos} photos</div>
+        <div class="note mono" style="margin-top:6px">${c.total - c.todo}/${c.total} checked · ${c.open} not complete · ${c.photos + c.site} photos</div>
       </button>`; }).join('')
       : `<div class="panel empty">No walks yet. Load the template, then start a walk for a stand. Each walk lists every template item grouped by location, ready to mark Complete, Not complete or N/A.</div>`}
     <p class="note">Walks and photos are stored only on this phone. Share the PDF report to send results to others. Add this app to your home screen so it opens offline.</p>
@@ -504,6 +510,7 @@ function renderWalk(){
   </div></header>
   <div class="whead pad">
     <div id="progWrap">${progBar(c)}<div class="note mono" style="margin-top:6px" id="progText">${c.total - c.todo} of ${c.total} checked · ${c.open} not complete</div></div>
+    <button class="btn sitebtn" data-act="gallery">${I.img}<span>Site photos (${(w.sitePhotos || []).length})</span><span class="muted" style="font-weight:500">General project photos</span></button>
     <div class="chips" id="chips">${chipsHTML()}</div>
     <div class="filters">
       <select id="locSel" aria-label="Location"><option value="all">All locations</option>${w.locations.map(l => `<option value="${esc(l)}" ${S.loc===l?'selected':''}>${esc(l)}</option>`).join('')}</select>
@@ -616,7 +623,7 @@ const stKey = it => it.status || 'todo';
 const numOf = it => { const n = parseFloat(String(it.no ?? '').replace(/[^0-9.]/g, '')); return isNaN(n) ? Infinity : n; };
 const respOf = it => it.resp || 'Unassigned';
 const divOf = it => it.division || 'No division';
-function defaultRepOpts(){ return { st:{ open:true, todo:true, complete:true, na:true }, resp:[], loc:[], div:[], noFrom:'', noTo:'', photosOnly:false, notesOnly:false, q:'', sort:'location', photos:true }; }
+function defaultRepOpts(){ return { st:{ open:true, todo:true, complete:true, na:true }, resp:[], loc:[], div:[], noFrom:'', noTo:'', photosOnly:false, notesOnly:false, q:'', sort:'location', photos:true, site:true }; }
 function repOpts(){
   const w = S.walk, d = defaultRepOpts();
   if(!w.reportOpts || typeof w.reportOpts !== 'object') w.reportOpts = d;
@@ -718,7 +725,8 @@ function renderReport(){
     </div>
     <div class="panel stack">
       <label class="f"><span>Sort and group by</span><select id="r-sort">${Object.entries(SORTS).map(([k,v]) => `<option value="${k}" ${o.sort===k?'selected':''}>${v}</option>`).join('')}</select></label>
-      <label class="check"><input type="checkbox" id="r-photos" ${o.photos ? 'checked' : ''}> Include photos in the PDF</label>
+      <label class="check"><input type="checkbox" id="r-photos" ${o.photos ? 'checked' : ''}> Include item photos in the PDF</label>
+      ${(w.sitePhotos || []).length ? `<label class="check"><input type="checkbox" id="r-site" ${o.site ? 'checked' : ''}> Include site photos in the PDF (${w.sitePhotos.length})</label>` : ''}
     </div>
     <div class="panel stack">
       <div id="repSummary"></div>
@@ -751,7 +759,7 @@ function renderReport(){
     o.div = [...form.querySelectorAll('input[data-g="div"]:checked')].map(x => x.value);
     o.noFrom = $('#r-from').value.trim(); o.noTo = $('#r-to').value.trim(); o.q = $('#r-q').value;
     o.photosOnly = $('#r-photosOnly').checked; o.notesOnly = $('#r-notesOnly').checked;
-    o.sort = $('#r-sort').value; o.photos = $('#r-photos').checked;
+    o.sort = $('#r-sort').value; o.photos = $('#r-photos').checked; if($('#r-site')) o.site = $('#r-site').checked;
     repChanged();
   };
   form.addEventListener('change', read);
@@ -776,7 +784,9 @@ function updateReportPreview(){
     </div>
     <div class="note" style="margin-top:8px">${esc(describeFilters(o))}</div>`;
   const pb = $('#r-photoBtn'); if(pb){ pb.disabled = !photos; pb.querySelector('span').textContent = `Share or save photos (${photos})`; }
-  document.querySelectorAll('#repForm [data-r="pdf"], #repForm [data-r="xlsx"]').forEach(b => b.disabled = !items.length);
+  const siteN = o.site ? (w.sitePhotos || []).length : 0;
+  const pdfB = $('#repForm [data-r="pdf"]'); if(pdfB) pdfB.disabled = !items.length && !siteN;
+  const xB = $('#repForm [data-r="xlsx"]'); if(xB) xB.disabled = !items.length;
   const MAX = 150; let html = '', last;
   items.slice(0, MAX).forEach(it => {
     const g = groupOf(o, it);
@@ -786,6 +796,55 @@ function updateReportPreview(){
   $('#repPreview').innerHTML = items.length
     ? `<div class="eyebrow">Preview</div><div class="prev">${html}</div>${items.length > MAX ? `<div class="note">…and ${items.length - MAX} more in the report.</div>` : ''}`
     : `<div class="panel empty">No items match these filters. Turn on more statuses or clear filters.</div>`;
+}
+
+/* ---------- site photos library ---------- */
+const capTimers = {};
+function saveCaption(pid, val){
+  clearTimeout(capTimers[pid]);
+  capTimers[pid] = setTimeout(async () => { const p = await DB.get('photos', pid); if(p){ p.caption = val; await DB.put('photos', pid, p); } }, 400);
+}
+function rerenderGallery(){ const y = window.scrollY; renderGallery().then(() => window.scrollTo(0, y)); }
+async function renderGallery(){
+  const w = S.walk; w.sitePhotos = w.sitePhotos || [];
+  const n = w.sitePhotos.length;
+  app.innerHTML = `
+  <header class="bar"><div class="bar-in pad">
+    <button class="iconbtn" data-act="backwalk" aria-label="Back to walk">${I.back}</button>
+    <div class="grow"><div class="title">Site photos</div><div class="sub">${esc(w.stand)} · ${n} photo${n === 1 ? '' : 's'}</div></div>
+  </div></header>
+  <div class="pad section stack">
+    <div class="note">General photos of the project for the record. These are not punch items. Add a caption if it helps, and tap a photo to mark it up.</div>
+    <div class="addph">
+      <label class="btn primary filebtn">${I.cam}<span>Take photo</span><input type="file" id="gCam" accept="image/*" capture="environment"></label>
+      <label class="btn filebtn">${I.img}<span>From library</span><input type="file" id="gLib" accept="image/*" multiple></label>
+    </div>
+    <div class="gallery" id="gGrid">${n ? '' : '<div class="panel empty">No site photos yet. Take photos of the overall site, elevations, equipment and finished areas to keep with this walk.</div>'}</div>
+    ${n ? `<button class="btn block" data-act="gexport">${I.share}<span>Share or save as JPEG files (${n})</span></button>
+    <div class="note">Each photo is saved as its own JPEG. On a phone, Share lets you save them to Photos or Files, email them, or upload them to Dropbox.</div>` : ''}
+  </div>`;
+  if(!n) return;
+  const recs = await Promise.all(w.sitePhotos.map(id => DB.get('photos', id)));
+  if(S.view !== 'gallery') return;
+  $('#gGrid').innerHTML = recs.map((p, i) => p ? `
+    <div class="gcard">
+      <div class="ph"><img src="${p.ann || p.src}" alt="Site photo ${i + 1}">
+        <button class="open" data-act="gannotate" data-pid="${esc(p.id)}" aria-label="Mark up site photo ${i + 1}"></button>
+        ${p.ann ? '<span class="badge">Marked up</span>' : ''}
+        <button class="del" data-act="gdel" data-pid="${esc(p.id)}" aria-label="Delete photo">${I.trash}</button>
+      </div>
+      <input type="text" class="g-cap" id="cap-${esc(p.id)}" data-pid="${esc(p.id)}" value="${esc(p.caption || '')}" placeholder="Caption (optional)" aria-label="Caption for site photo ${i + 1}">
+    </div>` : '').join('');
+}
+async function exportSitePhotos(btn){
+  const w = S.walk;
+  const recs = (await Promise.all((w.sitePhotos || []).map(id => DB.get('photos', id)))).filter(Boolean);
+  const prefix = `${safeName(w.stand)} - ${w.date}`;
+  const list = recs.map((p, i) => {
+    const cap = (p.caption || '').trim() ? safeName(p.caption).replace(/\s+/g, ' ').slice(0, 50).trim() : '';
+    return { folder:'', name: `${prefix} - Site photo ${String(i + 1).padStart(2, '0')}${cap ? ' - ' + cap : ''}.jpg`, url: p.ann || p.src };
+  });
+  await deliverPhotos(list, `${prefix} - Site photos`, btn, null);
 }
 
 /* ---------- events ---------- */
@@ -830,6 +889,7 @@ app.addEventListener('click', async e => {
     if(!b.classList.contains('armed')){ b.classList.add('armed'); b.querySelector('span').textContent = 'Tap again to delete walk and photos'; return; }
     const w = S.walk;
     for(const it of w.items) for(const pid of it.photos) await DB.del('photos', pid);
+    for(const pid of (w.sitePhotos || [])) await DB.del('photos', pid);
     await DB.del('walks', w.id); S.walk = null; await loadWalks(); go('home'); toast('Walk deleted');
   }
   else if(act === 'applyupdate'){ await flush(); if(S.updateReady) S.updateReady.postMessage('SKIP_WAITING'); }
@@ -838,6 +898,15 @@ app.addEventListener('click', async e => {
     const pass = await DB.get('meta', 'pass');
     if(pass) await syncTeamTemplate(pass); else { S.needPass = true; S.passMsg = 'Enter the team passcode to switch back to the team checklist.'; renderHome(); }
   }
+  else if(act === 'gallery') go('gallery');
+  else if(act === 'gannotate'){ const p = await DB.get('photos', b.dataset.pid); if(p) openAnnotator(p); }
+  else if(act === 'gdel'){
+    const pid = b.dataset.pid;
+    if(S.delArm !== pid){ S.delArm = pid; b.classList.add('confirm'); b.textContent = 'Delete?'; return; }
+    S.walk.sitePhotos = (S.walk.sitePhotos || []).filter(x => x !== pid); S.delArm = null;
+    await DB.del('photos', pid); saveWalk(true); rerenderGallery(); toast('Photo deleted');
+  }
+  else if(act === 'gexport') exportSitePhotos(b);
   else if(act === 'pdf') makePDF(b);
   else if(act === 'xlsx') makeXLSX(b);
   else if(act === 'allphotos') exportPhotos(S.walk.items, b, $('#repMsg'));
@@ -877,6 +946,7 @@ app.addEventListener('submit', async e => {
 app.addEventListener('input', e => {
   const id = e.target.id;
   if(id === 'q'){ S.q = e.target.value.trim(); renderList(); return; }
+  if(e.target.classList.contains('g-cap')){ saveCaption(e.target.dataset.pid, e.target.value); return; }
   if(S.view === 'item'){
     const it = S.walk.items.find(x => x.id === S.itemId); if(!it) return;
     if(id === 'i-notes'){ it.notes = e.target.value; saveWalk(); }
@@ -909,6 +979,20 @@ app.addEventListener('change', async e => {
           'Upload this file to the GitHub repo, replacing template.enc.json. Share the passcode with the team separately, not in the same message.');
       }catch(err){ toast('Could not build the template file.'); }
     }
+  }
+  else if(id === 'gCam' || id === 'gLib'){
+    const files = [...(e.target.files || [])]; e.target.value = '';
+    if(!files.length) return;
+    const w = S.walk; w.sitePhotos = w.sitePhotos || [];
+    toast(files.length > 1 ? `Adding ${files.length} photos…` : 'Adding photo…');
+    for(const f of files){
+      try{
+        const p = await processPhoto(f); p.walkId = w.id; p.itemId = null; p.kind = 'site'; p.caption = '';
+        await DB.put('photos', p.id, p); w.sitePhotos.push(p.id);
+      }catch(err){ toast('One photo could not be read.'); }
+    }
+    saveWalk(true);
+    if(S.view === 'gallery') rerenderGallery();
   }
   else if(id === 'camIn' || id === 'libIn'){
     const files = [...(e.target.files || [])]; e.target.value = '';
@@ -1161,6 +1245,7 @@ async function openAnnotator(photo){
       photo.shapes = shapes; photo.ann = shapes.length ? cv.toDataURL('image/jpeg', 0.85) : null;
       await DB.put('photos', photo.id, photo);
       close();
+      if(S.view === 'gallery') rerenderGallery();
       const it = S.walk && S.walk.items.find(x => x.id === S.itemId);
       if(it && S.view === 'item') renderPhotos(it);
       toast(shapes.length ? 'Markup saved' : 'Photo saved');
@@ -1211,33 +1296,58 @@ async function saveFile(filename, data, msgEl){
 const safeName = s => String(s || 'Stand').replace(/[\\/:*?"<>|]+/g, '-').trim();
 function dataURLBytes(u){ const b = atob(u.slice(u.indexOf(',') + 1)); const a = new Uint8Array(b.length); for(let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
 async function exportPhotos(items, btn, msgEl){
-  const out = msgEl || { set textContent(v){ toast(v); } };
-  const w = S.walk;
-  const list = [];
+  const w = S.walk; const list = [];
   for(const loc of w.locations) for(const it of items.filter(x => x.location === loc)){
     const recs = (await Promise.all(it.photos.map(id => DB.get('photos', id)))).filter(Boolean);
     const base = safeName(`#${it.no || '-'} ${it.item}`).slice(0, 60).trim();
     recs.forEach((p, i) => {
       const n = recs.length > 1 ? ` (${i + 1})` : '';
-      if(p.ann){ list.push({ name: `${safeName(loc)}/${base}${n} - marked up.jpg`, url: p.ann }); list.push({ name: `${safeName(loc)}/${base}${n} - original.jpg`, url: p.src }); }
-      else list.push({ name: `${safeName(loc)}/${base}${n}.jpg`, url: p.src });
+      if(p.ann){ list.push({ folder:safeName(loc), name:`${base}${n} - marked up.jpg`, url:p.ann }); list.push({ folder:safeName(loc), name:`${base}${n} - original.jpg`, url:p.src }); }
+      else list.push({ folder:safeName(loc), name:`${base}${n}.jpg`, url:p.src });
     });
   }
+  const scope = items.length === 1 ? ` - item ${safeName(items[0].no || '')}` : '';
+  await deliverPhotos(list, `${safeName(w.stand)} - ${w.date}${scope} - punch photos`, btn, msgEl);
+}
+/* Hand photos to the phone: one file directly, several as separate JPEGs through the share sheet (zip for saving). */
+async function deliverPhotos(list, zipBase, btn, msgEl){
+  const out = msgEl || { set textContent(v){ toast(v); } };
   if(!list.length){ out.textContent = 'No photos to export.'; return; }
   btn.disabled = true;
   try{
-    const prefix = `${safeName(w.stand)} - ${w.date}`;
-    if(list.length === 1){
-      await saveFile(`${prefix} - ${list[0].name.split('/').pop()}`, new Blob([dataURLBytes(list[0].url)]), msgEl);
-    } else {
-      if(!window.JSZip){ out.textContent = 'The zip builder did not load. Check the connection and reopen the page.'; return; }
-      out.textContent = `Packing ${list.length} photos…`;
-      const zip = new window.JSZip(); const root = zip.folder(`${prefix} punch photos`);
-      list.forEach(f => root.file(f.name, dataURLBytes(f.url), { binary:true }));
-      const blob = await zip.generateAsync({ type:'blob', compression:'STORE' });
-      const scope = items.length === 1 ? ` - item ${safeName(items[0].no || '')}` : '';
-      await saveFile(`${prefix}${scope} - photos.zip`, blob, msgEl);
-    }
+    if(list.length === 1){ showFileReady(list[0].name, new Blob([dataURLBytes(list[0].url)], { type:'image/jpeg' })); return; }
+    const files = list.map(f => new File([dataURLBytes(f.url)], f.name, { type:'image/jpeg' }));
+    let canShare = false;
+    try{ canShare = !!(navigator.canShare && navigator.canShare({ files })); }catch(e){}
+    const root = $('#sheetRoot');
+    root.innerHTML = `<div class="sheet-back" data-s="close"><div class="sheet" role="dialog" aria-label="Photos ready">
+      <div class="eyebrow">Photos ready</div>
+      <div class="fname">${list.length} JPEG photos</div>
+      <div class="note">${canShare ? 'Share sends them as separate JPEG files: choose Save Images to put them in Photos, Save to Files, Mail, or Dropbox.' : 'Save them to this device as one .zip of JPEG files.'}</div>
+      ${canShare ? `<button class="btn primary block" data-s="share">${I.share}<span>Share ${list.length} photos</span></button>` : ''}
+      <button class="btn block ${canShare ? '' : 'primary'}" data-s="zip">${I.file}<span>Save as .zip</span></button>
+      <button class="btn block" data-s="close">Close</button>
+    </div></div>`;
+    const close = () => { root.innerHTML = ''; root.onclick = null; };
+    root.onclick = async e => {
+      const b = e.target.closest('[data-s]'); if(!b) return;
+      if(b.classList.contains('sheet-back') && e.target !== b) return;
+      const a = b.dataset.s;
+      if(a === 'close') close();
+      else if(a === 'share'){
+        try{ await navigator.share({ files, title: zipBase }); close(); }
+        catch(err){ if(err && err.name !== 'AbortError') toast('Sharing failed. Use Save as .zip instead.'); }
+      } else if(a === 'zip'){
+        if(!window.JSZip){ toast('The zip builder did not load.'); return; }
+        b.disabled = true;
+        const zip = new window.JSZip(); const folder = zip.folder(zipBase);
+        list.forEach(f => folder.file((f.folder ? f.folder + '/' : '') + f.name, dataURLBytes(f.url), { binary:true }));
+        const blob = await zip.generateAsync({ type:'blob', compression:'STORE' });
+        const url = URL.createObjectURL(blob); const link = document.createElement('a');
+        link.href = url; link.download = zipBase + '.zip'; document.body.appendChild(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000); toast('Saved'); close();
+      }
+    };
   }catch(err){ out.textContent = 'Could not export the photos.'; }
   finally{ btn.disabled = false; }
 }
@@ -1246,7 +1356,8 @@ async function makePDF(btn){
   const msg = $('#repMsg');
   if(!window.jspdf){ msg.textContent = 'The PDF builder did not load. Check the connection and reopen the app.'; return; }
   const w = S.walk, o = repOpts(), items = reportItems(w, o);
-  if(!items.length){ msg.textContent = 'No items match these filters.'; return; }
+  const siteIds = o.site ? (w.sitePhotos || []) : [];
+  if(!items.length && !siteIds.length){ msg.textContent = 'No items match these filters.'; return; }
   btn.disabled = true; msg.textContent = 'Building PDF…';
   try{
     const { jsPDF } = window.jspdf;
@@ -1342,6 +1453,31 @@ async function makePDF(btn){
         }
       }
       y += 8;
+    }
+
+    // Site photos
+    const siteRecs = (await Promise.all(siteIds.map(id => DB.get('photos', id)))).filter(Boolean);
+    if(siteRecs.length){
+      ensure(80); y += 6; rule();
+      text(`Site photos (${siteRecs.length})`, M, 15, 'bold'); y += 6;
+      const colW = (CW - 12) / 2, maxH = 210, capLH = 11.5;
+      for(let i = 0; i < siteRecs.length; i += 2){
+        const pair = siteRecs.slice(i, i + 2).map((p, j) => {
+          const sc = Math.min(colW / p.w, maxH / p.h);
+          doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+          const label = `${i + j + 1}.${p.caption ? ' ' + p.caption : ''}`;
+          return { p, w:p.w*sc, h:p.h*sc, cap: doc.splitTextToSize(label, colW) };
+        });
+        const rowH = Math.max(...pair.map(q => q.h)) + Math.max(...pair.map(q => q.cap.length)) * capLH + 14;
+        ensure(rowH);
+        pair.forEach((q, j) => {
+          const x = M + j * (colW + 12);
+          doc.addImage(q.p.ann || q.p.src, 'JPEG', x, y, q.w, q.h, undefined, 'FAST');
+          doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...muted);
+          q.cap.forEach((ln, k) => doc.text(ln, x, y + q.h + 12 + k * capLH));
+        });
+        y += rowH;
+      }
     }
 
     const pages = doc.getNumberOfPages();
