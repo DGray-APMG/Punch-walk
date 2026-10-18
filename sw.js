@@ -1,5 +1,5 @@
 /* Punch Walk service worker: caches the app so it opens and runs with no signal. */
-const VERSION = 'punch-walk-v8';
+const VERSION = 'punch-walk-v9';
 const ASSETS = [
   './', './index.html', './vendor.html', './help.html', './manifest.webmanifest',
   './vendor/xlsx.full.min.js', './vendor/jspdf.umd.min.js', './vendor/jszip.min.js',
@@ -8,7 +8,8 @@ const ASSETS = [
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
 ];
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(ASSETS)));
+  // cache: 'reload' skips the browser's HTTP cache so an update never stores an older copy of a page
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' })))));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
