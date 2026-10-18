@@ -1389,7 +1389,7 @@ function showFileReady(filename, data, note){
     const a = b.dataset.s;
     if(a === 'close') close();
     else if(a === 'share'){
-      try{ await navigator.share({ files:[file], title: filename }); close(); }
+      try{ await navigator.share({ files:[file] }); close(); }
       catch(err){ if(err && err.name !== 'AbortError') toast('Sharing failed. Use Save to this device instead.'); }
     } else if(a === 'save'){
       const url = URL.createObjectURL(blob); const link = document.createElement('a');
@@ -1445,7 +1445,7 @@ async function deliverPhotos(list, zipBase, btn, msgEl){
       const a = b.dataset.s;
       if(a === 'close') close();
       else if(a === 'share'){
-        try{ await navigator.share({ files, title: zipBase }); close(); }
+        try{ await navigator.share({ files }); close(); }
         catch(err){ if(err && err.name !== 'AbortError') toast('Sharing failed. Use Save as .zip instead.'); }
       } else if(a === 'zip'){
         if(!window.JSZip){ toast('The zip builder did not load.'); return; }
