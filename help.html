@@ -3,24 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Punch Walk Guide</title>
+<title>7 Brew Punch Walk Guide</title>
 <meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#0b5d8a">
+<meta name="theme-color" content="#ffffff">
 <link rel="icon" href="icons/icon-192.png">
 <style>
-@font-face{font-family:"Barlow";font-weight:400;font-display:swap;src:url(fonts/barlow-latin-400-normal.woff2) format("woff2")}
-@font-face{font-family:"Barlow";font-weight:600;font-display:swap;src:url(fonts/barlow-latin-600-normal.woff2) format("woff2")}
-@font-face{font-family:"Barlow Condensed";font-weight:700;font-display:swap;src:url(fonts/barlow-condensed-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Anton";font-weight:400;font-display:swap;src:url(fonts/anton-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-weight:100 900;font-stretch:62% 125%;font-display:swap;src:url(fonts/archivo-latin-wdth-normal.woff2) format("woff2")}
+@font-face{font-family:"Montserrat";font-weight:400;font-display:swap;src:url(fonts/montserrat-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Montserrat";font-weight:500;font-display:swap;src:url(fonts/montserrat-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Montserrat";font-weight:600;font-display:swap;src:url(fonts/montserrat-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Montserrat";font-weight:700;font-display:swap;src:url(fonts/montserrat-latin-700-normal.woff2) format("woff2")}
 @font-face{font-family:"IBM Plex Mono";font-weight:500;font-display:swap;src:url(fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2")}
 /* Layout: reference guide — sticky contents rail on wide screens, single column on phones */
 :root{
-  --bg:#eef1f3; --surface:#ffffff; --surface-2:#f6f8f9; --ink:#15212b; --muted:#5b6872; --line:#d3dade;
-  --accent:#0b5d8a; --accent-soft:#dcebf3; --ok:#1f7a3f; --bad:#c2321f;
-  --font-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif; --font-body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --font-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --bg:#F3F6FA; --surface:#ffffff; --surface-2:#F2F6FA; --ink:#101010; --muted:#55606C; --line:#D9E1EA; --energy-red:#E4002B; --kindness-blue:#81C1EA;
+  --accent:#0056B4; --accent-soft:#E3F1FB; --ok:#1E8449; --bad:#E4002B;
+  --font-display:"Anton","Impact","Arial Narrow",sans-serif; --font-sub:"Archivo","Arial Black",Arial,sans-serif; --font-body:"Montserrat",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --font-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
   color-scheme:light; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px)
 }
 @media (prefers-color-scheme: dark){:root{
-  --bg:#0f161c; --surface:#18222a; --surface-2:#1d2932; --ink:#e8edf0; --muted:#94a2ac; --line:#2c3a45; --accent:#4fa8d8; --accent-soft:#16364a; --ok:#4cc27a; --bad:#ff6b57; color-scheme:dark}}
+  --bg:#0B0D10; --surface:#15181D; --surface-2:#1B1F25; --ink:#F2F4F7; --muted:#9AA6B3; --line:#2A3038; --accent:#2F7DE0; --accent-soft:#122B47; --ok:#4cc27a; --bad:#FF3B5C; color-scheme:dark}}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
@@ -30,9 +33,9 @@ a{color:var(--accent);font-weight:600;overflow-wrap:anywhere}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 header.top{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
 header.top .in{max-width:1100px;margin:0 auto;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));display:flex;align-items:center;gap:12px}
-header.top img{width:34px;height:34px;border-radius:8px}
+
 header.top .t{font-family:var(--font-display);font-weight:700;font-size:21px;flex:1;min-width:0}
-.back{min-height:42px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);padding:8px 14px;font-weight:600;text-decoration:none;color:var(--ink);white-space:nowrap}
+.back{min-height:42px;border-radius:12px;border:1px solid #D9E1EA;background:#ffffff;color:#101010!important;padding:8px 14px;font-weight:600;text-decoration:none;color:var(--ink);white-space:nowrap}
 .layout{max-width:1100px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 60px;display:grid;grid-template-columns:240px minmax(0,1fr);gap:32px;align-items:start}
 @media (max-width:860px){.layout{grid-template-columns:1fr;gap:16px}}
 nav.toc{position:sticky;top:76px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:15px}
@@ -62,10 +65,19 @@ table{border-collapse:collapse;width:100%;font-size:15px}
 th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
 th{font-family:var(--font-display);letter-spacing:.05em;text-transform:uppercase;font-size:13px;color:var(--muted)}
 .intro p{font-size:18px}
+
+/* 7 Brew brand layer */
+h1,h2,h3,header.top .t{font-family:var(--font-display);font-weight:400;text-transform:uppercase;letter-spacing:.015em}
+h2{color:var(--accent)}
+.eyebrow,label.f span,th,.links .lbl{font-family:var(--font-sub);font-stretch:125%;font-weight:800;letter-spacing:.03em;text-transform:uppercase}
+header.top{background:#ffffff;border-bottom:1px solid #D9E1EA;color:#101010}
+.brandlogo{height:40px;width:auto;display:block}
+.arrows{display:inline-block;height:.62em;width:auto;color:var(--energy-red);vertical-align:middle;margin-left:8px}
+.btn{border-radius:14px}
 </style>
 </head>
 <body>
-<header class="top"><div class="in"><img src="icons/icon-192.png" alt=""><div class="t">Punch Walk Guide</div><a class="back" href="./">Back to the app</a></div></header>
+<header class="top"><div class="in"><img class="brandlogo" src="brand/logo-horizontal.png" alt="7 Brew Drive Thru Coffee"><div class="t" style="color:#0056B4">Guide</div><a class="back" href="./">Back to the app</a></div></header>
 <div class="layout">
 <nav class="toc" aria-label="Contents"><div class="eyebrow">Contents</div><ol>
   <li><a href="#links">Links</a></li>
@@ -85,7 +97,7 @@ th{font-family:var(--font-display);letter-spacing:.05em;text-transform:uppercase
 <main>
 <section class="intro">
   <div class="eyebrow">For construction project managers</div>
-  <h1>How to use Punch Walk</h1>
+  <h1 style="color:var(--accent)">How to use Punch Walk<svg class="arrows" viewBox="0 0 66 22" aria-hidden="true" fill="currentColor"><path d="M0 0h8l11 11L8 22H0l11-11zM22 0h8l11 11-11 11h-8l11-11zM44 0h8l11 11-11 11h-8l11-11z"/></svg></h1>
   <p>Punch Walk runs the 7 Brew stand hand-over punch list in the field: mark every checklist item, document deficiencies with marked-up photos, send tasks to vendors, review their completion photos, and share reports. It works offline, and everything you record stays on your device until you share it.</p>
 </section>
 

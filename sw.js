@@ -1,11 +1,13 @@
 /* Punch Walk service worker: caches the app so it opens and runs with no signal. */
-const VERSION = 'punch-walk-v9';
+const VERSION = 'punch-walk-v10';
 const ASSETS = [
   './', './index.html', './vendor.html', './help.html', './manifest.webmanifest',
   './vendor/xlsx.full.min.js', './vendor/jspdf.umd.min.js', './vendor/jszip.min.js',
-  './fonts/barlow-latin-400-normal.woff2', './fonts/barlow-latin-500-normal.woff2', './fonts/barlow-latin-600-normal.woff2',
-  './fonts/barlow-condensed-latin-600-normal.woff2', './fonts/barlow-condensed-latin-700-normal.woff2', './fonts/ibm-plex-mono-latin-500-normal.woff2',
-  './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
+  './fonts/anton-latin-400-normal.woff2', './fonts/archivo-latin-wdth-normal.woff2',
+  './fonts/montserrat-latin-400-normal.woff2', './fonts/montserrat-latin-500-normal.woff2', './fonts/montserrat-latin-600-normal.woff2', './fonts/montserrat-latin-700-normal.woff2',
+  './fonts/ibm-plex-mono-latin-500-normal.woff2',
+  './brand/logo-horizontal.png', './brand/logo-round.png',
+  './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png'
 ];
 self.addEventListener('install', e => {
   // cache: 'reload' skips the browser's HTTP cache so an update never stores an older copy of a page

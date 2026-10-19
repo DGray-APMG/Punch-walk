@@ -15,6 +15,9 @@ Phone web app for 7 Brew stand hand-over punch walks. It installs to the home sc
 - All libraries and fonts are bundled in `vendor/` and `fonts/`, so the app makes no third-party requests.
 - Hosting must be approved by APMG IT before this goes live. GitHub Pages on non-Enterprise plans serves the site publicly, even from a private repo.
 
+## Branding
+Colors, logos and type follow the 7 Brew Brand Book 2026: Stand Blue `#0056B4`, Energy Red `#E4002B`, Kindness Blue `#81C1EA`, Rich Black. Logos in `brand/` are the official primary and primary-horizontal logos, used full color on white only (never faded, rotated or stretched; at least 36 px tall). The brand fonts (Acumin Pro, Gotham) are licensed, so the app uses close open-licensed substitutes: Anton (headlines), Archivo Expanded (subheads) and Montserrat (body).
+
 ## Files
 | Path | Purpose |
 |---|---|
