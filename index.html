@@ -313,7 +313,11 @@ h2{font-size:26px;color:var(--accent)}
 .pendn{background:var(--energy-red)}
 .brandbar{background:#ffffff;border-bottom-color:#D9E1EA}
 .brandbar .iconbtn{background:#ffffff;color:#101010!important;border-color:#D9E1EA}
-.wbtns .sitebtn{flex-wrap:nowrap;white-space:nowrap}
+.wbtns .sitebtn{flex-wrap:nowrap;white-space:nowrap;min-width:0;overflow:hidden}
+.wbtns .sitebtn span{overflow:hidden;text-overflow:ellipsis}
+@media (max-width:420px){.wbtns .sitebtn{font-size:14px;gap:6px;padding:8px 6px}.wbtns .sitebtn svg{width:18px;height:18px}}
+.filters .qwide{grid-column:1 / -1}
+#respSel.active,#locSel.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .vtag{color:var(--energy-red)}
 </style>
 
@@ -593,6 +597,7 @@ function itemVisible(it){
     if(S.filter === 'photos' && !it.photos.length) return false;
   }
   if(S.loc !== 'all' && it.location !== S.loc) return false;
+  if(S.resp && S.resp !== 'all' && (it.resp || 'Unassigned') !== S.resp) return false;
   if(S.q){ const q = S.q.toLowerCase(); if(!(it.item.toLowerCase().includes(q) || String(it.no).includes(q) || (it.notes||'').toLowerCase().includes(q))) return false; }
   return true;
 }
@@ -620,9 +625,11 @@ function rowHTML(it){
   </div>`;
 }
 function chipsHTML(){
-  const c = counts(S.walk);
+  // Counts follow the location and responsible-party filters, so "Not checked" shows what is left for that party
+  const scoped = S.walk.items.filter(it => (S.loc === 'all' || it.location === S.loc) && (!S.resp || S.resp === 'all' || (it.resp || 'Unassigned') === S.resp));
+  const c = counts(Object.assign({}, S.walk, { items: scoped }));
   const chip = (f, label, n, dot) => `<button class="chip" data-act="filter" data-f="${f}" aria-pressed="${S.filter===f}">${dot ? `<span class="dot" style="background:var(${dot})"></span>` : ''}${label} <b>${n}</b></button>`;
-  return chip('all','All',c.total) + chip('todo','Not checked',c.todo) + chip('open','Not complete',c.open,'--bad') + chip('complete','Complete',c.complete,'--ok') + chip('na','N/A',c.na,'--na') + chip('photos','With photos', S.walk.items.filter(i=>i.photos.length).length);
+  return chip('all','All',c.total) + chip('todo','Not checked',c.todo) + chip('open','Not complete',c.open,'--bad') + chip('complete','Complete',c.complete,'--ok') + chip('na','N/A',c.na,'--na') + chip('photos','With photos', scoped.filter(i=>i.photos.length).length);
 }
 function renderWalk(){
   const w = S.walk; const c = counts(w);
@@ -642,18 +649,20 @@ function renderWalk(){
     <div class="chips" id="chips">${chipsHTML()}</div>
     <div class="filters">
       <select id="locSel" aria-label="Location"><option value="all">All locations</option>${w.locations.map(l => `<option value="${esc(l)}" ${S.loc===l?'selected':''}>${esc(l)}</option>`).join('')}</select>
-      <input type="search" id="q" placeholder="Search items" value="${esc(S.q)}" aria-label="Search items">
+      <select id="respSel" aria-label="Responsible party"><option value="all">All responsible parties</option>${[...new Set(w.items.map(i => i.resp || 'Unassigned'))].sort().map(r => `<option value="${esc(r)}" ${S.resp===r?'selected':''}>${esc(r)} (${w.items.filter(i => (i.resp || 'Unassigned') === r).length})</option>`).join('')}</select>
+      <input type="search" id="q" class="qwide" placeholder="Search items" value="${esc(S.q)}" aria-label="Search items">
     </div>
   </div>
   <div class="pad" id="list"></div>
   <div class="pad section"><button class="btn block" data-act="additem">${I.plus}<span>Add an item not on the list</span></button></div>`;
   renderList();
+  refreshCounts();
 }
 function renderList(){
   const w = S.walk; const list = $('#list'); if(!list) return;
   let html = '';
   w.locations.forEach(loc => {
-    const all = w.items.filter(it => it.location === loc);
+    const all = w.items.filter(it => it.location === loc && (!S.resp || S.resp === 'all' || (it.resp || 'Unassigned') === S.resp));
     const vis = all.filter(itemVisible);
     if(!vis.length) return;
     const done = all.filter(it => it.status).length;
@@ -663,7 +672,10 @@ function renderList(){
 }
 function refreshCounts(){
   const c = counts(S.walk);
-  const pw = $('#progWrap'); if(pw) pw.innerHTML = `${progBar(c)}<div class="note mono" style="margin-top:6px">${c.total - c.todo} of ${c.total} checked · ${c.open} not complete</div>`;
+  let extra = '';
+  if(S.resp && S.resp !== 'all'){ const r = S.walk.items.filter(i => (i.resp || 'Unassigned') === S.resp); const rc = counts(Object.assign({}, S.walk, { items: r })); extra = `<div class="note mono" style="margin-top:2px;color:var(--accent)">${esc(S.resp)}: ${rc.total - rc.todo} of ${rc.total} checked · ${rc.open} not complete</div>`; }
+  const pw = $('#progWrap'); if(pw) pw.innerHTML = `${progBar(c)}<div class="note mono" style="margin-top:6px">${c.total - c.todo} of ${c.total} checked · ${c.open} not complete</div>${extra}`;
+  ['locSel','respSel'].forEach(id => { const el = $('#' + id); if(el) el.classList.toggle('active', el.value !== 'all'); });
   const ch = $('#chips'); if(ch){ const sl = ch.scrollLeft; ch.innerHTML = chipsHTML(); ch.scrollLeft = sl; }
 }
 function setStatus(id, st){
@@ -1249,7 +1261,7 @@ app.addEventListener('click', async e => {
   const act = b.dataset.act;
   if(act === 'home'){ await flush(); S.walk = null; await loadWalks(); go('home'); }
   else if(act === 'new') go('new');
-  else if(act === 'openwalk'){ S.walk = S.walks.find(w => w.id === b.dataset.id); S.filter='all'; S.loc='all'; S.q=''; S.scroll=0; go('walk'); wake(); }
+  else if(act === 'openwalk'){ S.walk = S.walks.find(w => w.id === b.dataset.id); S.filter='all'; S.loc='all'; S.resp='all'; S.q=''; S.scroll=0; go('walk'); wake(); }
   else if(act === 'backwalk') go('walk', {keepScroll:true});
   else if(act === 'edit') go('edit');
   else if(act === 'report') go('report');
@@ -1341,7 +1353,7 @@ app.addEventListener('submit', async e => {
         items: t.items.map((x, i) => ({ id:'i' + i, no:x.no, item:x.item, division:x.division, location:x.location, resp:x.resp, status:'', fa:false, notes:'', photos:[] })) }, data);
       w.locations = orderLocs([...w.locations, ...w.items.map(i => i.location), 'MISC.']).filter(l => w.items.some(i => i.location === l) || l === 'MISC.');
       S.walk = w; S.walks.push(w); await DB.put('walks', w.id, w);
-      S.filter='all'; S.loc='all'; S.q=''; S.scroll=0; go('walk'); wake();
+      S.filter='all'; S.loc='all'; S.resp='all'; S.q=''; S.scroll=0; go('walk'); wake();
     } else {
       Object.assign(S.walk, data); saveWalk(true); go('walk',{keepScroll:true}); toast('Details saved');
     }
@@ -1367,7 +1379,7 @@ app.addEventListener('input', e => {
 });
 app.addEventListener('change', async e => {
   const id = e.target.id;
-  if(id === 'locSel'){ S.loc = e.target.value; renderList(); window.scrollTo(0,0); }
+  if(id === 'locSel' || id === 'respSel'){ if(id === 'locSel') S.loc = e.target.value; else S.resp = e.target.value; refreshCounts(); renderList(); window.scrollTo(0,0); }
   else if(id === 'i-resp' || id === 'i-fa'){
     const it = S.walk.items.find(x => x.id === S.itemId);
     if(id === 'i-resp') it.resp = e.target.value; else it.fa = e.target.checked;
