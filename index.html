@@ -318,17 +318,22 @@ h2{font-size:26px;color:var(--accent)}
 @media (max-width:420px){.wbtns .sitebtn{font-size:14px;gap:6px;padding:8px 6px}.wbtns .sitebtn svg{width:18px;height:18px}}
 .filters .qwide{grid-column:1 / -1}
 .chips{overflow-y:hidden;overscroll-behavior-x:contain}
-.frow{display:grid;grid-template-columns:42px 1fr 1fr 1fr 42px;gap:6px}
-.fpills{display:contents}
-.fpill{position:relative;overflow:hidden;min-width:0;display:flex;align-items:center;justify-content:center;gap:4px;height:38px;padding:0 6px;border-radius:19px;border:1px solid var(--line);background:var(--surface-2);font-weight:600;font-size:13px;white-space:nowrap;color:var(--ink)}
-.fpill span{overflow:hidden;text-overflow:ellipsis}
-.fpill svg{width:17px;height:17px;flex:none}
-.fpill.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.fpill select{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;font-size:16px;cursor:pointer;appearance:none;-webkit-appearance:none;border:0;margin:0;padding:0}
-.fclear{display:flex;align-items:center;justify-content:center;height:38px;padding:0;border-radius:19px;border:1px solid var(--energy-red);background:var(--bad-soft);color:var(--energy-red)}
-.fclear svg{width:18px;height:18px}
-.fclear:disabled{border-color:var(--line);background:transparent;color:var(--muted);opacity:.5}
-#searchRow input{min-height:44px}
+.frow{display:flex;gap:8px;align-items:center}
+.frow input[type=search]{flex:1;min-width:0;min-height:44px}
+.fbtn{flex:none;display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);font-weight:700;font-size:15px;color:var(--ink);white-space:nowrap}
+.fbtn svg{width:19px;height:19px}
+.fbtn.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.fbar{display:flex;align-items:center;gap:10px;padding:6px 6px 6px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--accent)}
+.fbar .ftext{flex:1;min-width:0;font-weight:600;font-size:14px;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fbar button{flex:none;display:inline-flex;align-items:center;gap:4px;height:34px;padding:0 10px;border-radius:9px;border:1px solid var(--energy-red);background:var(--bad-soft);color:var(--energy-red);font-weight:700;font-size:14px}
+.fbar button svg{width:15px;height:15px}
+.fsheet{max-height:88vh;max-height:88dvh;padding-bottom:0;gap:0}
+.fsheet .fhead{display:flex;align-items:center;justify-content:space-between;padding-bottom:10px}
+.fsheet .fhead h2{margin:0;font-family:var(--font-display);font-size:24px;letter-spacing:.02em;text-transform:uppercase}
+.fsheet .fbody{overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:16px;padding:4px 0 16px}
+.fsheet .fgroup .eyebrow{margin-bottom:8px}
+.fsheet .chip{min-height:42px;font-size:14.5px}
+.fsheet .ffoot{display:grid;grid-template-columns:1fr 2fr;gap:8px;padding:12px 0 calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
 .filtline{margin-top:2px;color:var(--accent)}
 #respSel.active,#locSel.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .vtag{color:var(--energy-red)}
@@ -369,6 +374,7 @@ const I = {
   search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
   pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/></svg>',
   person:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="3.8"/><path d="M4.5 20.5c1.2-3.8 4-5.8 7.5-5.8s6.3 2 7.5 5.8"/></svg>',
+  filter:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"/></svg>',
   layers:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
   share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v8h14v-8"/></svg>',
   text:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></svg>',
@@ -651,24 +657,49 @@ function inScope(it){
 }
 const scopeActive = () => S.loc !== 'all' || (S.resp && S.resp !== 'all') || (S.div && S.div !== 'all');
 const anyFilterActive = () => scopeActive() || S.filter !== 'all' || !!S.q;
-function pillsHTML(){
-  const w = S.walk;
-  const caret = '<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
-  const cnt = fn => v => w.items.filter(i => fn(i) === v).length;
-  const opts = (vals, cur, allLabel, counter) => `<option value="all">${allLabel}</option>` + vals.map(v => `<option value="${esc(v)}" ${cur === v ? 'selected' : ''}>${esc(v)} (${counter(v)})</option>`).join('');
-  const locs = w.locations.filter(l => w.items.some(i => i.location === l));
-  const resps = [...new Set(w.items.map(respOfItem))].sort();
-  const divs = [...new Set(w.items.map(divOfItem))].sort();
-  const pill = (id, icon, label, cur, vals, allLabel, counter) => `<label class="fpill ${cur !== 'all' ? 'on' : ''}"><span>${esc(cur === 'all' ? label : cur)}</span><select id="${id}" aria-label="Filter by ${label}">${opts(vals, cur, allLabel, counter)}</select></label>`;
-  const parts = [
-    { on: !!S.q, html: `<button class="fpill ${S.q ? 'on' : ''}" data-act="togglesearch" aria-label="Search" aria-expanded="${!!(S.searchOpen || S.q)}">${I.search}</button>` },
-    { on: (S.loc||'all') !== 'all', html: pill('locSel', I.pin, 'Location', S.loc || 'all', locs, 'All locations', cnt(it => it.location)) },
-    { on: (S.resp||'all') !== 'all', html: pill('respSel', I.person, 'Resp.', S.resp || 'all', resps, 'All responsible parties', cnt(respOfItem)) },
-    { on: (S.div||'all') !== 'all', html: pill('divSel', I.layers, 'Division', S.div || 'all', divs, 'All divisions', cnt(divOfItem)) }
-  ];
-  return parts.map(p => p.html).join('');
+const STATUS_LABEL = { todo:'Not checked', open:'Not complete', complete:'Complete', na:'N/A', photos:'With photos' };
+function scopeCount(){ return [S.loc, S.resp, S.div].filter(v => v && v !== 'all').length; }
+// Updates the Filter button and the active-filter bar
+function updatePills(){
+  const btn = $('#fbtn'); if(btn){ const n = scopeCount(); btn.classList.toggle('on', n > 0); btn.querySelector('span').textContent = n ? `Filter (${n})` : 'Filter'; }
+  const bar = $('#fbar'); if(!bar) return;
+  if(!anyFilterActive()){ bar.innerHTML = ''; return; }
+  const parts = [S.resp, S.div, S.loc].filter(v => v && v !== 'all');
+  if(S.filter !== 'all') parts.push(STATUS_LABEL[S.filter]);
+  if(S.q) parts.push('“' + S.q + '”');
+  bar.innerHTML = `<div class="fbar"><div class="ftext">${esc(parts.join(' · '))}</div><button data-act="clearfilters" aria-label="Clear all filters">${I.x}<span>Clear all</span></button></div>`;
 }
-function updatePills(){ const el = $('#fpills'); if(el){ const x = el.scrollLeft; el.innerHTML = pillsHTML(); el.scrollLeft = x; } const c = $('#fclear'); if(c) c.disabled = !anyFilterActive(); }
+function openFilterSheet(){
+  const w = S.walk; const root = $('#sheetRoot');
+  const groups = [
+    { key:'resp', title:'Responsible party', vals:[...new Set(w.items.map(respOfItem))].sort(), of:respOfItem },
+    { key:'div', title:'Division', vals:[...new Set(w.items.map(divOfItem))].sort(), of:divOfItem },
+    { key:'loc', title:'Location', vals:w.locations.filter(l => w.items.some(i => i.location === l)), of:it => it.location }
+  ];
+  const draw = () => {
+    const shown = visibleItems().length;
+    root.innerHTML = `<div class="sheet-back" data-s="close"><div class="sheet fsheet" role="dialog" aria-modal="true" aria-label="Filter">
+      <div class="fhead"><h2>Filter</h2><button class="btn" data-s="close" aria-label="Close">${I.x}</button></div>
+      <div class="fbody">${groups.map(g => {
+        const cur = S[g.key] || 'all';
+        const chip = (v, label, n) => `<button class="chip" data-s="pick" data-k="${g.key}" data-v="${esc(v)}" aria-pressed="${cur === v}">${esc(label)}${n != null ? ` <b>${n}</b>` : ''}</button>`;
+        return `<div class="fgroup"><div class="eyebrow">${g.title}</div><div class="chips wrap">${chip('all', 'All')}${g.vals.map(v => chip(v, v, w.items.filter(i => g.of(i) === v).length)).join('')}</div></div>`;
+      }).join('')}</div>
+      <div class="ffoot"><button class="btn" data-s="clear">Clear all</button><button class="btn primary" data-s="close">Show ${shown} item${shown === 1 ? '' : 's'}</button></div>
+    </div></div>`;
+  };
+  const apply = () => { updatePills(); refreshCounts(); renderList(); };
+  draw();
+  const keepScroll = fn => { const body = root.querySelector('.fbody'); const y = body ? body.scrollTop : 0; fn(); const nb = root.querySelector('.fbody'); if(nb) nb.scrollTop = y; };
+  root.onclick = e => {
+    const b = e.target.closest('[data-s]'); if(!b) return;
+    if(b.classList.contains('sheet-back') && e.target !== b) return;
+    const a = b.dataset.s;
+    if(a === 'close'){ root.innerHTML = ''; root.onclick = null; window.scrollTo(0, 0); }
+    else if(a === 'pick'){ S[b.dataset.k] = b.dataset.v; apply(); keepScroll(draw); }
+    else if(a === 'clear'){ S.loc = 'all'; S.resp = 'all'; S.div = 'all'; S.filter = 'all'; S.q = ''; const q = $('#q'); if(q) q.value = ''; apply(); keepScroll(draw); }
+  };
+}
 function chipsHTML(){
   // Counts follow the location and responsible-party filters, so "Not checked" shows what is left for that party
   const scoped = S.walk.items.filter(inScope);
@@ -692,13 +723,14 @@ function renderWalk(){
       <button class="btn sitebtn" data-act="vendors">${I.share}<span>Vendor updates${pendingCount(w) ? ` <b class="pendn">${pendingCount(w)}</b>` : ''}</span></button>
     </div>
     <div class="chips" id="chips">${chipsHTML()}</div>
-    <div class="frow"><div class="fpills" id="fpills" role="toolbar" aria-label="Filters">${pillsHTML()}</div><button class="fclear" id="fclear" data-act="clearfilters" ${anyFilterActive() ? '' : 'disabled'} aria-label="Clear all filters" title="Clear all filters">${I.x}</button></div>
-    <div id="searchRow" ${S.searchOpen || S.q ? '' : 'hidden'}><input type="search" id="q" placeholder="Search item text, number or notes" value="${esc(S.q)}" aria-label="Search items"></div>
+    <div class="frow"><input type="search" id="q" placeholder="Search items or notes" value="${esc(S.q)}" aria-label="Search items"><button class="fbtn" id="fbtn" data-act="filtersheet" aria-haspopup="dialog">${I.filter}<span>Filter</span></button></div>
+    <div id="fbar"></div>
   </div>
   <div class="pad" id="list"></div>
   <div class="pad section"><button class="btn block" data-act="additem">${I.plus}<span>Add an item not on the list</span></button></div>`;
   renderList();
   refreshCounts();
+  updatePills();
 }
 function renderList(){
   const w = S.walk; const list = $('#list'); if(!list) return;
@@ -717,8 +749,7 @@ function refreshCounts(){
   let extra = '';
   if(scopeActive()){
     const r = S.walk.items.filter(inScope); const rc = counts(Object.assign({}, S.walk, { items: r }));
-    const lbl = [S.resp !== 'all' ? S.resp : '', S.div && S.div !== 'all' ? S.div : '', S.loc !== 'all' ? S.loc : ''].filter(Boolean).join(' · ');
-    extra = `<div class="note mono filtline">${esc(lbl)}: ${rc.total - rc.todo} of ${rc.total} checked · ${rc.open} not complete</div>`;
+    extra = `<div class="note mono filtline">Filtered: ${rc.total - rc.todo} of ${rc.total} checked · ${rc.open} not complete</div>`;
   }
   const pw = $('#progWrap'); if(pw) pw.innerHTML = `${progBar(c)}<div class="note mono" style="margin-top:6px">${c.total - c.todo} of ${c.total} checked · ${c.open} not complete</div>${extra}`;
   const ch = $('#chips'); if(ch){ const sl = ch.scrollLeft; ch.innerHTML = chipsHTML(); ch.scrollLeft = sl; }
@@ -1312,8 +1343,8 @@ app.addEventListener('click', async e => {
   else if(act === 'report') go('report');
   else if(act === 'additem') go('additem');
   else if(act === 'filter'){ S.filter = b.dataset.f; refreshCounts(); updatePills(); renderList(); }
-  else if(act === 'togglesearch'){ const row = $('#searchRow'); const open = row.hidden; row.hidden = !open; S.searchOpen = open; if(open){ $('#q').focus(); } else if(S.q){ S.q = ''; $('#q').value = ''; renderList(); refreshCounts(); } updatePills(); }
-  else if(act === 'clearfilters'){ S.filter = 'all'; S.loc = 'all'; S.resp = 'all'; S.div = 'all'; S.q = ''; S.searchOpen = false; const row = $('#searchRow'); if(row){ row.hidden = true; $('#q').value = ''; } updatePills(); refreshCounts(); renderList(); window.scrollTo(0, 0); toast('Filters cleared'); }
+  else if(act === 'filtersheet'){ openFilterSheet(); }
+  else if(act === 'clearfilters'){ S.filter = 'all'; S.loc = 'all'; S.resp = 'all'; S.div = 'all'; S.q = ''; const q = $('#q'); if(q) q.value = ''; updatePills(); refreshCounts(); renderList(); window.scrollTo(0, 0); toast('Filters cleared'); }
   else if(act === 'st'){
     const row = b.closest('.row'); const it = setStatus(row.dataset.id, b.dataset.st);
     if(it){ row.outerHTML = rowHTML(it); refreshCounts(); }
@@ -1415,7 +1446,7 @@ app.addEventListener('submit', async e => {
 
 app.addEventListener('input', e => {
   const id = e.target.id;
-  if(id === 'q'){ S.q = e.target.value.trim(); renderList(); clearTimeout(S.pillT); S.pillT = setTimeout(updatePills, 500); return; }
+  if(id === 'q'){ S.q = e.target.value.trim(); renderList(); clearTimeout(S.pillT); S.pillT = setTimeout(() => { updatePills(); refreshCounts(); }, 400); return; }
   if(e.target.classList.contains('g-cap')){ saveCaption(e.target.dataset.pid, e.target.value); return; }
   if(id === 'v-cpmEmail'){ DB.put('meta', 'cpmEmail', e.target.value.trim()); return; }
   if(S.view === 'item'){
