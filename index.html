@@ -421,7 +421,7 @@ const DB = {
 };
 
 /* ---------- state ---------- */
-const S = { view:'home', template:null, needPass:false, passMsg:'', online:navigator.onLine !== false, updateReady:null, walks:[], walk:null, itemId:null, filter:'all', loc:'all', q:'', scroll:0, delArm:null };
+const S = { view:'home', template:null, needPass:false, passMsg:'', online:navigator.onLine !== false, updateReady:null, walks:[], walk:null, itemId:null, filter:'all', loc:[], resp:[], div:[], q:'', scroll:0, delArm:null };
 let saveTimer = null;
 function saveWalk(now){
   if(!S.walk) return;
@@ -619,7 +619,6 @@ function itemVisible(it){
     if(S.filter !== 'todo' && S.filter !== 'photos' && it.status !== S.filter) return false;
     if(S.filter === 'photos' && !it.photos.length) return false;
   }
-  if(S.loc !== 'all' && it.location !== S.loc) return false;
   if(!inScope(it)) return false;
   if(S.q){ const q = S.q.toLowerCase(); if(!(it.item.toLowerCase().includes(q) || String(it.no).includes(q) || (it.notes||'').toLowerCase().includes(q))) return false; }
   return true;
@@ -651,20 +650,22 @@ const divOfItem = it => it.division || 'No division';
 const respOfItem = it => it.resp || 'Unassigned';
 /* Location, responsible party and division filters (status chips and search are separate) */
 function inScope(it){
-  return (S.loc === 'all' || it.location === S.loc)
-    && (!S.resp || S.resp === 'all' || respOfItem(it) === S.resp)
-    && (!S.div || S.div === 'all' || divOfItem(it) === S.div);
+  const L = sel(S.loc), R = sel(S.resp), D = sel(S.div);
+  return (!L.length || L.includes(it.location)) && (!R.length || R.includes(respOfItem(it))) && (!D.length || D.includes(divOfItem(it)));
 }
-const scopeActive = () => S.loc !== 'all' || (S.resp && S.resp !== 'all') || (S.div && S.div !== 'all');
+// Location, responsible and division filters are lists; an empty list means all
+const sel = v => Array.isArray(v) ? v : (!v || v === 'all' ? [] : [v]);
+function resetScope(){ S.loc = []; S.resp = []; S.div = []; }
+const scopeActive = () => sel(S.loc).length > 0 || sel(S.resp).length > 0 || sel(S.div).length > 0;
 const anyFilterActive = () => scopeActive() || S.filter !== 'all' || !!S.q;
 const STATUS_LABEL = { todo:'Not checked', open:'Not complete', complete:'Complete', na:'N/A', photos:'With photos' };
-function scopeCount(){ return [S.loc, S.resp, S.div].filter(v => v && v !== 'all').length; }
+function scopeCount(){ return sel(S.loc).length + sel(S.resp).length + sel(S.div).length; }
 // Updates the Filter button and the active-filter bar
 function updatePills(){
   const btn = $('#fbtn'); if(btn){ const n = scopeCount(); btn.classList.toggle('on', n > 0); btn.querySelector('span').textContent = n ? `Filter (${n})` : 'Filter'; }
   const bar = $('#fbar'); if(!bar) return;
   if(!anyFilterActive()){ bar.innerHTML = ''; return; }
-  const parts = [S.resp, S.div, S.loc].filter(v => v && v !== 'all');
+  const parts = [S.resp, S.div, S.loc].map(v => sel(v).join(', ')).filter(Boolean);
   if(S.filter !== 'all') parts.push(STATUS_LABEL[S.filter]);
   if(S.q) parts.push('“' + S.q + '”');
   bar.innerHTML = `<div class="fbar"><div class="ftext">${esc(parts.join(' · '))}</div><button data-act="clearfilters" aria-label="Clear all filters">${I.x}<span>Clear all</span></button></div>`;
@@ -681,9 +682,9 @@ function openFilterSheet(){
     root.innerHTML = `<div class="sheet-back" data-s="close"><div class="sheet fsheet" role="dialog" aria-modal="true" aria-label="Filter">
       <div class="fhead"><h2>Filter</h2><button class="btn" data-s="close" aria-label="Close">${I.x}</button></div>
       <div class="fbody">${groups.map(g => {
-        const cur = S[g.key] || 'all';
-        const chip = (v, label, n) => `<button class="chip" data-s="pick" data-k="${g.key}" data-v="${esc(v)}" aria-pressed="${cur === v}">${esc(label)}${n != null ? ` <b>${n}</b>` : ''}</button>`;
-        return `<div class="fgroup"><div class="eyebrow">${g.title}</div><div class="chips wrap">${chip('all', 'All')}${g.vals.map(v => chip(v, v, w.items.filter(i => g.of(i) === v).length)).join('')}</div></div>`;
+        const cur = sel(S[g.key]);
+        const chip = (v, label, n) => `<button class="chip" data-s="pick" data-k="${g.key}" data-v="${esc(v)}" aria-pressed="${v === 'all' ? !cur.length : cur.includes(v)}">${esc(label)}${n != null ? ` <b>${n}</b>` : ''}</button>`;
+        return `<div class="fgroup"><div class="eyebrow">${g.title}${cur.length ? ` · ${cur.length} selected` : ''}</div><div class="chips wrap">${chip('all', 'All')}${g.vals.map(v => chip(v, v, w.items.filter(i => g.of(i) === v).length)).join('')}</div></div>`;
       }).join('')}</div>
       <div class="ffoot"><button class="btn" data-s="clear">Clear all</button><button class="btn primary" data-s="close">Show ${shown} item${shown === 1 ? '' : 's'}</button></div>
     </div></div>`;
@@ -696,8 +697,8 @@ function openFilterSheet(){
     if(b.classList.contains('sheet-back') && e.target !== b) return;
     const a = b.dataset.s;
     if(a === 'close'){ root.innerHTML = ''; root.onclick = null; window.scrollTo(0, 0); }
-    else if(a === 'pick'){ S[b.dataset.k] = b.dataset.v; apply(); keepScroll(draw); }
-    else if(a === 'clear'){ S.loc = 'all'; S.resp = 'all'; S.div = 'all'; S.filter = 'all'; S.q = ''; const q = $('#q'); if(q) q.value = ''; apply(); keepScroll(draw); }
+    else if(a === 'pick'){ const k = b.dataset.k, v = b.dataset.v, cur = sel(S[k]); S[k] = v === 'all' ? [] : (cur.includes(v) ? cur.filter(x => x !== v) : cur.concat(v)); apply(); keepScroll(draw); }
+    else if(a === 'clear'){ resetScope(); S.filter = 'all'; S.q = ''; const q = $('#q'); if(q) q.value = ''; apply(); keepScroll(draw); }
   };
 }
 function chipsHTML(){
@@ -825,7 +826,7 @@ function renderAddItem(){
   <header class="bar"><div class="bar-in pad"><button class="iconbtn" data-act="backwalk" aria-label="Back">${I.back}</button><div class="grow"><div class="title">Add item</div></div></div></header>
   <form class="pad section stack" id="addForm">
     <label class="f"><span>Description</span><textarea id="a-text" required placeholder="Describe the deficiency"></textarea></label>
-    <label class="f"><span>Location</span><select id="a-loc">${w.locations.map(l => `<option ${l===(S.loc!=='all'?S.loc:'MISC.')?'selected':''}>${esc(l)}</option>`).join('')}</select></label>
+    <label class="f"><span>Location</span><select id="a-loc">${w.locations.map(l => `<option ${l===(sel(S.loc).length===1?sel(S.loc)[0]:'MISC.')?'selected':''}>${esc(l)}</option>`).join('')}</select></label>
     <label class="f"><span>Division</span><select id="a-div">${divs.map(d => `<option>${esc(d)}</option>`).join('')}</select></label>
     <label class="f"><span>Responsible party</span><select id="a-resp">${respOptions('GC')}</select></label>
     <button class="btn primary block" type="submit">Add item and open it</button>
@@ -1337,14 +1338,14 @@ app.addEventListener('click', async e => {
   const act = b.dataset.act;
   if(act === 'home'){ await flush(); S.walk = null; await loadWalks(); go('home'); }
   else if(act === 'new') go('new');
-  else if(act === 'openwalk'){ S.walk = S.walks.find(w => w.id === b.dataset.id); S.filter='all'; S.loc='all'; S.resp='all'; S.div='all'; S.q=''; S.searchOpen=false; S.scroll=0; go('walk'); wake(); }
+  else if(act === 'openwalk'){ S.walk = S.walks.find(w => w.id === b.dataset.id); S.filter='all'; resetScope(); S.q=''; S.searchOpen=false; S.scroll=0; go('walk'); wake(); }
   else if(act === 'backwalk') go('walk', {keepScroll:true});
   else if(act === 'edit') go('edit');
   else if(act === 'report') go('report');
   else if(act === 'additem') go('additem');
   else if(act === 'filter'){ S.filter = b.dataset.f; refreshCounts(); updatePills(); renderList(); }
   else if(act === 'filtersheet'){ openFilterSheet(); }
-  else if(act === 'clearfilters'){ S.filter = 'all'; S.loc = 'all'; S.resp = 'all'; S.div = 'all'; S.q = ''; const q = $('#q'); if(q) q.value = ''; updatePills(); refreshCounts(); renderList(); window.scrollTo(0, 0); toast('Filters cleared'); }
+  else if(act === 'clearfilters'){ S.filter = 'all'; resetScope(); S.q = ''; const q = $('#q'); if(q) q.value = ''; updatePills(); refreshCounts(); renderList(); window.scrollTo(0, 0); toast('Filters cleared'); }
   else if(act === 'st'){
     const row = b.closest('.row'); const it = setStatus(row.dataset.id, b.dataset.st);
     if(it){ row.outerHTML = rowHTML(it); refreshCounts(); }
@@ -1431,7 +1432,7 @@ app.addEventListener('submit', async e => {
         items: t.items.map((x, i) => ({ id:'i' + i, no:x.no, item:x.item, division:x.division, location:x.location, resp:x.resp, status:'', fa:false, notes:'', photos:[] })) }, data);
       w.locations = orderLocs([...w.locations, ...w.items.map(i => i.location), 'MISC.']).filter(l => w.items.some(i => i.location === l) || l === 'MISC.');
       S.walk = w; S.walks.push(w); await DB.put('walks', w.id, w);
-      S.filter='all'; S.loc='all'; S.resp='all'; S.div='all'; S.q=''; S.searchOpen=false; S.scroll=0; go('walk'); wake();
+      S.filter='all'; resetScope(); S.q=''; S.searchOpen=false; S.scroll=0; go('walk'); wake();
     } else {
       Object.assign(S.walk, data); saveWalk(true); go('walk',{keepScroll:true}); toast('Details saved');
     }
@@ -1457,8 +1458,7 @@ app.addEventListener('input', e => {
 });
 app.addEventListener('change', async e => {
   const id = e.target.id;
-  if(id === 'locSel' || id === 'respSel' || id === 'divSel'){ if(id === 'locSel') S.loc = e.target.value; else if(id === 'respSel') S.resp = e.target.value; else S.div = e.target.value; updatePills(); refreshCounts(); renderList(); window.scrollTo(0,0); }
-  else if(id === 'i-resp' || id === 'i-fa'){
+  if(id === 'i-resp' || id === 'i-fa'){
     const it = S.walk.items.find(x => x.id === S.itemId);
     if(id === 'i-resp') it.resp = e.target.value; else it.fa = e.target.checked;
     saveWalk();
