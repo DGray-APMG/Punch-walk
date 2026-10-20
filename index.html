@@ -164,6 +164,8 @@ textarea{min-height:96px;resize:vertical}
 .filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .navrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .itemtext{font-size:20px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.kvsel{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kvsel select{min-width:0;width:100%}
 .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
 .kv div{background:var(--surface-2);border-radius:10px;padding:8px 10px}
 .kv b{display:block;font-family:var(--font-display);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
@@ -767,6 +769,10 @@ function respOptions(cur){
   const list = [...new Set([...(S.walk.resps || []), cur].filter(Boolean))].sort();
   return `<option value="">None</option>` + list.map(r => `<option ${r===cur?'selected':''}>${esc(r)}</option>`).join('');
 }
+function divOptions(cur){
+  const list = [...new Set([...(S.walk.divisions || []), ...S.walk.items.map(x => x.division), cur].filter(Boolean))].sort();
+  return (cur ? '' : `<option value="" selected>None</option>`) + list.map(d => `<option ${d===cur?'selected':''}>${esc(d)}</option>`).join('');
+}
 async function renderItem(){
   const w = S.walk; const it = w.items.find(x => x.id === S.itemId);
   if(!it){ go('walk',{keepScroll:true}); return; }
@@ -780,7 +786,10 @@ async function renderItem(){
   </div></header>
   <div class="pad section stack">
     ${it.custom ? `<label class="f"><span>Item</span><textarea id="i-text">${esc(it.item)}</textarea></label>` : `<div class="itemtext">${esc(it.item)}</div>`}
-    <div class="kv"><div><b>Division</b>${esc(it.division || '—')}</div><div><b>Location</b>${esc(it.location)}</div></div>
+    <div class="kvsel">
+      <label class="f"><span>Division</span><select id="i-div">${divOptions(it.division)}</select></label>
+      <label class="f"><span>Location</span><select id="i-loc">${w.locations.concat(w.locations.includes(it.location) ? [] : [it.location]).map(l => `<option ${l===it.location?'selected':''}>${esc(l)}</option>`).join('')}</select></label>
+    </div>
     <div class="bigseg" role="group" aria-label="Status">
       <button class="ok" data-act="bst" data-st="complete" aria-pressed="${st==='complete'}">${I.check}Complete</button>
       <button class="bad" data-act="bst" data-st="open" aria-pressed="${st==='open'}">${I.x}Not complete</button>
@@ -1458,10 +1467,18 @@ app.addEventListener('input', e => {
 });
 app.addEventListener('change', async e => {
   const id = e.target.id;
-  if(id === 'i-resp' || id === 'i-fa'){
+  if(id === 'i-resp' || id === 'i-fa' || id === 'i-div' || id === 'i-loc'){
     const it = S.walk.items.find(x => x.id === S.itemId);
-    if(id === 'i-resp') it.resp = e.target.value; else it.fa = e.target.checked;
+    if(id === 'i-resp') it.resp = e.target.value;
+    else if(id === 'i-fa') it.fa = e.target.checked;
+    else if(id === 'i-div') it.division = e.target.value;
+    else it.location = e.target.value;
     saveWalk();
+    if(id !== 'i-fa'){
+      const sub = $('.bar .sub'); if(sub && id === 'i-loc') sub.textContent = it.location;
+      if(!itemVisible(it)) toast('Saved. This item no longer matches your filters.');
+      else if(id === 'i-loc') toast('Moved to ' + it.location);
+    }
   }
   else if(id === 'tplFile' || id === 'genFile'){
     const f = e.target.files && e.target.files[0]; e.target.value = ''; if(!f) return;
