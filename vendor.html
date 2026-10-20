@@ -61,6 +61,7 @@ textarea{min-height:88px;resize:vertical}
 .summary{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{min-height:38px;border-radius:19px;border:1px solid var(--line);background:var(--surface-2);padding:6px 14px;font-weight:600;font-size:14px}
+.rfilter{display:flex;flex-direction:column;gap:8px}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .task{background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--line);border-radius:14px;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
 .task.updated{border-left-color:var(--accent)} .task.done{border-left-color:var(--ok)}
@@ -144,7 +145,8 @@ const store = {
   async all(){ if(!this.db) return []; try{ return await this.tx('readonly', s => s.getAll()); }catch(e){ return []; } }
 };
 
-const S = { enc:null, pkg:null, draft:null, filter:'all' };
+const S = { enc:null, pkg:null, draft:null, filter:'all', resp:[] };
+const respOf = i => i.resp || 'Unassigned';
 let saveT;
 function saveDraft(){ clearTimeout(saveT); saveT = setTimeout(() => { if(S.draft){ S.draft.saved = Date.now(); store.put(S.draft.packageId, S.draft); } }, 400); }
 
@@ -243,10 +245,12 @@ function taskScreen(){
     <div class="summary"><div class="chips">
       <button class="chip" data-f="all">All tasks</button><button class="chip" data-f="todo">Not updated</button><button class="chip" data-f="upd">Updated</button>
     </div><div class="note mono" id="sumText"></div></div>
+    <div id="respRow"></div>
     <div class="stack" id="tasks"></div>
   </div>`;
   $('#editMe').addEventListener('click', () => vendorScreen());
   app.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { S.filter = b.dataset.f; renderTasks(); }));
+  S.resp = [];
   $('#foot').hidden = false;
   renderTasks();
 }
@@ -258,8 +262,21 @@ function refreshSummary(){
   $('#makeResp').disabled = !u;
   app.querySelectorAll('[data-f]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === S.filter)));
 }
+function respRowHTML(){
+  const parties = [...new Set(S.pkg.items.map(respOf))].sort();
+  if(parties.length < 2) return '';
+  const chip = (v, label, n) => `<button class="chip" data-r="${esc(v)}" aria-pressed="${v === '' ? !S.resp.length : S.resp.includes(v)}">${esc(label)}${n != null ? ` <span class="mono">${n}</span>` : ''}</button>`;
+  return `<div class="rfilter"><div class="eyebrow">Responsible party${S.resp.length ? ` · ${S.resp.length} selected` : ''}</div><div class="chips">${chip('', 'All')}${parties.map(p => chip(p, p, S.pkg.items.filter(i => respOf(i) === p).length)).join('')}</div></div>`;
+}
 function renderTasks(){
-  const list = S.pkg.items.filter(i => S.filter === 'all' || (S.filter === 'upd' ? hasUpd(S.draft.updates[i.id]) : !hasUpd(S.draft.updates[i.id])));
+  const row = $('#respRow');
+  if(row){
+    row.innerHTML = respRowHTML();
+    row.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => {
+      const v = b.dataset.r; S.resp = v === '' ? [] : (S.resp.includes(v) ? S.resp.filter(x => x !== v) : S.resp.concat(v)); renderTasks();
+    }));
+  }
+  const list = S.pkg.items.filter(i => (!S.resp.length || S.resp.includes(respOf(i))) && (S.filter === 'all' || (S.filter === 'upd' ? hasUpd(S.draft.updates[i.id]) : !hasUpd(S.draft.updates[i.id]))));
   $('#tasks').innerHTML = list.length ? list.map(taskHTML).join('') : '<div class="panel note">No tasks in this view.</div>';
   list.forEach(i => bindTask(i.id));
   refreshSummary();

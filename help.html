@@ -260,6 +260,7 @@ header.top{background:#ffffff;border-bottom:1px solid #D9E1EA;color:#101010}
     <li>Loads the task file and enters the <b>stand number</b> as the password.</li>
     <li>Enters their name, company and email.</li>
     <li>For each task, adds completion photos (drag and drop works on a computer), adds notes, and checks <b>Mark this task complete</b>.</li>
+    <li>If the file covers more than one responsible party, can tap one or more parties at the top of the list to show only those tasks.</li>
     <li>Clicks <span class="btnname">Create response file</span>, saves it, and emails it back to you.</li>
   </ol>
   <p>The vendor's work is saved in their browser, so they can stop and continue later.</p>
@@ -269,8 +270,9 @@ header.top{background:#ffffff;border-bottom:1px solid #D9E1EA;color:#101010}
     <li>Open the walk, tap <span class="btnname">Vendor updates</span>, then <span class="btnname">Load a vendor response file</span>.</li>
     <li>Each update shows the vendor's notes and photos. Tap a photo to enlarge it.
       <ul><li><span class="btnname">Accept</span>: the item becomes Complete, the vendor photos are added to it, and their note is added to yours.</li>
-          <li><span class="btnname">Deny</span>: enter a reason. The item stays Not complete.</li>
-          <li><span class="btnname">Undo</span> reverses either choice.</li></ul></li>
+          <li><span class="btnname">Deny</span>: enter a reason. The item stays Not complete. If the item is already Complete (for example accepted from another vendor), it stays Complete.</li>
+          <li><span class="btnname">Undo</span> reverses either choice, as long as the item has not changed since. If it has, change it on the item screen instead.</li></ul></li>
+      <li>Each vendor's response is kept separately and only touches the items that vendor updated, so loading one vendor's file never erases another's. An item that appears in more than one response is tagged <b>Also in the response from…</b>.</li>
     <li>Tap <span class="btnname">Email vendor</span> to open a drafted email listing what was accepted and what needs more work.</li>
   </ol>
   <p>Items with an update waiting show "Vendor update to review" in the list, and the Vendor updates button shows a count. A response only loads into the walk it was sent from, and the same response cannot be loaded twice.</p>

@@ -1,5 +1,5 @@
 /* Punch Walk service worker: caches the app so it opens and runs with no signal. */
-const VERSION = 'punch-walk-v16';
+const VERSION = 'punch-walk-v18';
 const ASSETS = [
   './', './index.html', './vendor.html', './help.html', './manifest.webmanifest',
   './vendor/xlsx.full.min.js', './vendor/jspdf.umd.min.js', './vendor/jszip.min.js',
@@ -33,6 +33,14 @@ self.addEventListener('fetch', e => {
   // Page loads: serve the cached app shell.
   if (req.mode === 'navigate') {
     const page = url.pathname.endsWith('/vendor.html') ? './vendor.html' : url.pathname.endsWith('/help.html') ? './help.html' : './index.html';
+    if (page !== './index.html') {
+      // Vendor page and guide: use the newest copy when online, so vendors never see an outdated page
+      e.respondWith(fetch(req, { cache: 'no-store' }).then(res => {
+        if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(page, copy)); }
+        return res;
+      }).catch(() => caches.match(page)));
+      return;
+    }
     e.respondWith(caches.match(page).then(r => r || fetch(req)));
     return;
   }
