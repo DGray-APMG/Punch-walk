@@ -317,6 +317,17 @@ h2{font-size:26px;color:var(--accent)}
 .wbtns .sitebtn span{overflow:hidden;text-overflow:ellipsis}
 @media (max-width:420px){.wbtns .sitebtn{font-size:14px;gap:6px;padding:8px 6px}.wbtns .sitebtn svg{width:18px;height:18px}}
 .filters .qwide{grid-column:1 / -1}
+.fpills{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:1px 24px 2px 1px;margin-right:-16px;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+.fpills::-webkit-scrollbar{display:none}
+.fpill{position:relative;flex:none;display:inline-flex;align-items:center;gap:6px;min-height:42px;padding:6px 12px;border-radius:21px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:14.5px;white-space:nowrap;max-width:230px;color:var(--ink)}
+.fpill span{overflow:hidden;text-overflow:ellipsis}
+.fpill svg{width:17px;height:17px;flex:none}
+.fpill .caret{width:15px;height:15px;opacity:.7}
+.fpill.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.fpill select{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;cursor:pointer;appearance:none;-webkit-appearance:none;border:0}
+.fpill.clear{background:var(--bad-soft);border-color:var(--energy-red);color:var(--energy-red)}
+#searchRow input{min-height:44px}
+.filtline{margin-top:2px;color:var(--accent)}
 #respSel.active,#locSel.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .vtag{color:var(--energy-red)}
 </style>
@@ -353,6 +364,10 @@ const I = {
   box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="4" y="6" width="16" height="12" rx="1"/></svg>',
   undo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L4 9l5 5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg>',
   arrows:'<svg class="arrows" viewBox="0 0 66 22" aria-hidden="true" fill="currentColor"><path d="M0 0h8l11 11L8 22H0l11-11zM22 0h8l11 11-11 11h-8l11-11zM44 0h8l11 11-11 11h-8l11-11z"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/></svg>',
+  person:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="3.8"/><path d="M4.5 20.5c1.2-3.8 4-5.8 7.5-5.8s6.3 2 7.5 5.8"/></svg>',
+  layers:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
   share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v8h14v-8"/></svg>',
   text:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></svg>',
   file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11l6 6M15 11l-6 6"/></svg>'
@@ -597,7 +612,7 @@ function itemVisible(it){
     if(S.filter === 'photos' && !it.photos.length) return false;
   }
   if(S.loc !== 'all' && it.location !== S.loc) return false;
-  if(S.resp && S.resp !== 'all' && (it.resp || 'Unassigned') !== S.resp) return false;
+  if(!inScope(it)) return false;
   if(S.q){ const q = S.q.toLowerCase(); if(!(it.item.toLowerCase().includes(q) || String(it.no).includes(q) || (it.notes||'').toLowerCase().includes(q))) return false; }
   return true;
 }
@@ -624,9 +639,39 @@ function rowHTML(it){
     </div>
   </div>`;
 }
+const divOfItem = it => it.division || 'No division';
+const respOfItem = it => it.resp || 'Unassigned';
+/* Location, responsible party and division filters (status chips and search are separate) */
+function inScope(it){
+  return (S.loc === 'all' || it.location === S.loc)
+    && (!S.resp || S.resp === 'all' || respOfItem(it) === S.resp)
+    && (!S.div || S.div === 'all' || divOfItem(it) === S.div);
+}
+const scopeActive = () => S.loc !== 'all' || (S.resp && S.resp !== 'all') || (S.div && S.div !== 'all');
+const anyFilterActive = () => scopeActive() || S.filter !== 'all' || !!S.q;
+function pillsHTML(){
+  const w = S.walk;
+  const caret = '<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+  const cnt = fn => v => w.items.filter(i => fn(i) === v).length;
+  const opts = (vals, cur, allLabel, counter) => `<option value="all">${allLabel}</option>` + vals.map(v => `<option value="${esc(v)}" ${cur === v ? 'selected' : ''}>${esc(v)} (${counter(v)})</option>`).join('');
+  const locs = w.locations.filter(l => w.items.some(i => i.location === l));
+  const resps = [...new Set(w.items.map(respOfItem))].sort();
+  const divs = [...new Set(w.items.map(divOfItem))].sort();
+  const pill = (id, icon, label, cur, vals, allLabel, counter) => `<label class="fpill ${cur !== 'all' ? 'on' : ''}">${icon}<span>${esc(cur === 'all' ? label : cur)}</span>${caret}<select id="${id}" aria-label="${label}">${opts(vals, cur, allLabel, counter)}</select></label>`;
+  const parts = [
+    { on: !!S.q, html: `<button class="fpill ${S.q ? 'on' : ''}" data-act="togglesearch" aria-expanded="${!!(S.searchOpen || S.q)}">${I.search}<span>${S.q ? esc('“' + S.q + '”') : 'Search'}</span></button>` },
+    { on: (S.loc||'all') !== 'all', html: pill('locSel', I.pin, 'Location', S.loc || 'all', locs, 'All locations', cnt(it => it.location)) },
+    { on: (S.resp||'all') !== 'all', html: pill('respSel', I.person, 'Responsible', S.resp || 'all', resps, 'All responsible parties', cnt(respOfItem)) },
+    { on: (S.div||'all') !== 'all', html: pill('divSel', I.layers, 'Division', S.div || 'all', divs, 'All divisions', cnt(divOfItem)) }
+  ];
+  // Active filters move to the front so they are always in view
+  const ordered = parts.filter(p => p.on).concat(parts.filter(p => !p.on));
+  return (anyFilterActive() ? `<button class="fpill clear" data-act="clearfilters">${I.x}<span>Clear all</span></button>` : '') + ordered.map(p => p.html).join('');
+}
+function updatePills(){ const el = $('#fpills'); if(el){ el.innerHTML = pillsHTML(); } }
 function chipsHTML(){
   // Counts follow the location and responsible-party filters, so "Not checked" shows what is left for that party
-  const scoped = S.walk.items.filter(it => (S.loc === 'all' || it.location === S.loc) && (!S.resp || S.resp === 'all' || (it.resp || 'Unassigned') === S.resp));
+  const scoped = S.walk.items.filter(inScope);
   const c = counts(Object.assign({}, S.walk, { items: scoped }));
   const chip = (f, label, n, dot) => `<button class="chip" data-act="filter" data-f="${f}" aria-pressed="${S.filter===f}">${dot ? `<span class="dot" style="background:var(${dot})"></span>` : ''}${label} <b>${n}</b></button>`;
   return chip('all','All',c.total) + chip('todo','Not checked',c.todo) + chip('open','Not complete',c.open,'--bad') + chip('complete','Complete',c.complete,'--ok') + chip('na','N/A',c.na,'--na') + chip('photos','With photos', scoped.filter(i=>i.photos.length).length);
@@ -646,12 +691,9 @@ function renderWalk(){
       <button class="btn sitebtn" data-act="gallery">${I.img}<span>Site photos (${(w.sitePhotos || []).length})</span></button>
       <button class="btn sitebtn" data-act="vendors">${I.share}<span>Vendor updates${pendingCount(w) ? ` <b class="pendn">${pendingCount(w)}</b>` : ''}</span></button>
     </div>
+    <div class="fpills" id="fpills" role="toolbar" aria-label="Filters">${pillsHTML()}</div>
     <div class="chips" id="chips">${chipsHTML()}</div>
-    <div class="filters">
-      <select id="locSel" aria-label="Location"><option value="all">All locations</option>${w.locations.map(l => `<option value="${esc(l)}" ${S.loc===l?'selected':''}>${esc(l)}</option>`).join('')}</select>
-      <select id="respSel" aria-label="Responsible party"><option value="all">All responsible parties</option>${[...new Set(w.items.map(i => i.resp || 'Unassigned'))].sort().map(r => `<option value="${esc(r)}" ${S.resp===r?'selected':''}>${esc(r)} (${w.items.filter(i => (i.resp || 'Unassigned') === r).length})</option>`).join('')}</select>
-      <input type="search" id="q" class="qwide" placeholder="Search items" value="${esc(S.q)}" aria-label="Search items">
-    </div>
+    <div id="searchRow" ${S.searchOpen || S.q ? '' : 'hidden'}><input type="search" id="q" placeholder="Search item text, number or notes" value="${esc(S.q)}" aria-label="Search items"></div>
   </div>
   <div class="pad" id="list"></div>
   <div class="pad section"><button class="btn block" data-act="additem">${I.plus}<span>Add an item not on the list</span></button></div>`;
@@ -662,20 +704,23 @@ function renderList(){
   const w = S.walk; const list = $('#list'); if(!list) return;
   let html = '';
   w.locations.forEach(loc => {
-    const all = w.items.filter(it => it.location === loc && (!S.resp || S.resp === 'all' || (it.resp || 'Unassigned') === S.resp));
+    const all = w.items.filter(it => it.location === loc && inScope(it));
     const vis = all.filter(itemVisible);
     if(!vis.length) return;
     const done = all.filter(it => it.status).length;
     html += `<div class="group"><h3>${esc(loc)}</h3><span class="note mono">${done}/${all.length}</span></div><div class="items">${vis.map(rowHTML).join('')}</div>`;
   });
-  list.innerHTML = html || `<div class="empty">No items match this filter.</div>`;
+  list.innerHTML = html || `<div class="empty stack" style="align-items:center"><div>No items match these filters.</div><button class="btn" data-act="clearfilters">${I.x}<span>Clear filters</span></button></div>`;
 }
 function refreshCounts(){
   const c = counts(S.walk);
   let extra = '';
-  if(S.resp && S.resp !== 'all'){ const r = S.walk.items.filter(i => (i.resp || 'Unassigned') === S.resp); const rc = counts(Object.assign({}, S.walk, { items: r })); extra = `<div class="note mono" style="margin-top:2px;color:var(--accent)">${esc(S.resp)}: ${rc.total - rc.todo} of ${rc.total} checked · ${rc.open} not complete</div>`; }
+  if(scopeActive()){
+    const r = S.walk.items.filter(inScope); const rc = counts(Object.assign({}, S.walk, { items: r }));
+    const lbl = [S.resp !== 'all' ? S.resp : '', S.div && S.div !== 'all' ? S.div : '', S.loc !== 'all' ? S.loc : ''].filter(Boolean).join(' · ');
+    extra = `<div class="note mono filtline">${esc(lbl)}: ${rc.total - rc.todo} of ${rc.total} checked · ${rc.open} not complete</div>`;
+  }
   const pw = $('#progWrap'); if(pw) pw.innerHTML = `${progBar(c)}<div class="note mono" style="margin-top:6px">${c.total - c.todo} of ${c.total} checked · ${c.open} not complete</div>${extra}`;
-  ['locSel','respSel'].forEach(id => { const el = $('#' + id); if(el) el.classList.toggle('active', el.value !== 'all'); });
   const ch = $('#chips'); if(ch){ const sl = ch.scrollLeft; ch.innerHTML = chipsHTML(); ch.scrollLeft = sl; }
 }
 function setStatus(id, st){
@@ -1261,12 +1306,14 @@ app.addEventListener('click', async e => {
   const act = b.dataset.act;
   if(act === 'home'){ await flush(); S.walk = null; await loadWalks(); go('home'); }
   else if(act === 'new') go('new');
-  else if(act === 'openwalk'){ S.walk = S.walks.find(w => w.id === b.dataset.id); S.filter='all'; S.loc='all'; S.resp='all'; S.q=''; S.scroll=0; go('walk'); wake(); }
+  else if(act === 'openwalk'){ S.walk = S.walks.find(w => w.id === b.dataset.id); S.filter='all'; S.loc='all'; S.resp='all'; S.div='all'; S.q=''; S.searchOpen=false; S.scroll=0; go('walk'); wake(); }
   else if(act === 'backwalk') go('walk', {keepScroll:true});
   else if(act === 'edit') go('edit');
   else if(act === 'report') go('report');
   else if(act === 'additem') go('additem');
-  else if(act === 'filter'){ S.filter = b.dataset.f; refreshCounts(); renderList(); }
+  else if(act === 'filter'){ S.filter = b.dataset.f; refreshCounts(); updatePills(); renderList(); }
+  else if(act === 'togglesearch'){ const row = $('#searchRow'); const open = row.hidden; row.hidden = !open; S.searchOpen = open; if(open){ $('#q').focus(); } else if(S.q){ S.q = ''; $('#q').value = ''; renderList(); refreshCounts(); } updatePills(); }
+  else if(act === 'clearfilters'){ S.filter = 'all'; S.loc = 'all'; S.resp = 'all'; S.div = 'all'; S.q = ''; S.searchOpen = false; const row = $('#searchRow'); if(row){ row.hidden = true; $('#q').value = ''; } updatePills(); refreshCounts(); renderList(); window.scrollTo(0, 0); toast('Filters cleared'); }
   else if(act === 'st'){
     const row = b.closest('.row'); const it = setStatus(row.dataset.id, b.dataset.st);
     if(it){ row.outerHTML = rowHTML(it); refreshCounts(); }
@@ -1353,7 +1400,7 @@ app.addEventListener('submit', async e => {
         items: t.items.map((x, i) => ({ id:'i' + i, no:x.no, item:x.item, division:x.division, location:x.location, resp:x.resp, status:'', fa:false, notes:'', photos:[] })) }, data);
       w.locations = orderLocs([...w.locations, ...w.items.map(i => i.location), 'MISC.']).filter(l => w.items.some(i => i.location === l) || l === 'MISC.');
       S.walk = w; S.walks.push(w); await DB.put('walks', w.id, w);
-      S.filter='all'; S.loc='all'; S.resp='all'; S.q=''; S.scroll=0; go('walk'); wake();
+      S.filter='all'; S.loc='all'; S.resp='all'; S.div='all'; S.q=''; S.searchOpen=false; S.scroll=0; go('walk'); wake();
     } else {
       Object.assign(S.walk, data); saveWalk(true); go('walk',{keepScroll:true}); toast('Details saved');
     }
@@ -1368,7 +1415,7 @@ app.addEventListener('submit', async e => {
 
 app.addEventListener('input', e => {
   const id = e.target.id;
-  if(id === 'q'){ S.q = e.target.value.trim(); renderList(); return; }
+  if(id === 'q'){ S.q = e.target.value.trim(); renderList(); clearTimeout(S.pillT); S.pillT = setTimeout(updatePills, 500); return; }
   if(e.target.classList.contains('g-cap')){ saveCaption(e.target.dataset.pid, e.target.value); return; }
   if(id === 'v-cpmEmail'){ DB.put('meta', 'cpmEmail', e.target.value.trim()); return; }
   if(S.view === 'item'){
@@ -1379,7 +1426,7 @@ app.addEventListener('input', e => {
 });
 app.addEventListener('change', async e => {
   const id = e.target.id;
-  if(id === 'locSel' || id === 'respSel'){ if(id === 'locSel') S.loc = e.target.value; else S.resp = e.target.value; refreshCounts(); renderList(); window.scrollTo(0,0); }
+  if(id === 'locSel' || id === 'respSel' || id === 'divSel'){ if(id === 'locSel') S.loc = e.target.value; else if(id === 'respSel') S.resp = e.target.value; else S.div = e.target.value; updatePills(); refreshCounts(); renderList(); window.scrollTo(0,0); }
   else if(id === 'i-resp' || id === 'i-fa'){
     const it = S.walk.items.find(x => x.id === S.itemId);
     if(id === 'i-resp') it.resp = e.target.value; else it.fa = e.target.checked;
