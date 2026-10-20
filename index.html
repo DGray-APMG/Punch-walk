@@ -317,15 +317,17 @@ h2{font-size:26px;color:var(--accent)}
 .wbtns .sitebtn span{overflow:hidden;text-overflow:ellipsis}
 @media (max-width:420px){.wbtns .sitebtn{font-size:14px;gap:6px;padding:8px 6px}.wbtns .sitebtn svg{width:18px;height:18px}}
 .filters .qwide{grid-column:1 / -1}
-.fpills{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:1px 24px 2px 1px;margin-right:-16px;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
-.fpills::-webkit-scrollbar{display:none}
-.fpill{position:relative;flex:none;display:inline-flex;align-items:center;gap:6px;min-height:42px;padding:6px 12px;border-radius:21px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:14.5px;white-space:nowrap;max-width:230px;color:var(--ink)}
+.chips{overflow-y:hidden;overscroll-behavior-x:contain}
+.frow{display:grid;grid-template-columns:42px 1fr 1fr 1fr 42px;gap:6px}
+.fpills{display:contents}
+.fpill{position:relative;overflow:hidden;min-width:0;display:flex;align-items:center;justify-content:center;gap:4px;height:38px;padding:0 6px;border-radius:19px;border:1px solid var(--line);background:var(--surface-2);font-weight:600;font-size:13px;white-space:nowrap;color:var(--ink)}
 .fpill span{overflow:hidden;text-overflow:ellipsis}
 .fpill svg{width:17px;height:17px;flex:none}
-.fpill .caret{width:15px;height:15px;opacity:.7}
 .fpill.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.fpill select{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;cursor:pointer;appearance:none;-webkit-appearance:none;border:0}
-.fpill.clear{background:var(--bad-soft);border-color:var(--energy-red);color:var(--energy-red)}
+.fpill select{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;font-size:16px;cursor:pointer;appearance:none;-webkit-appearance:none;border:0;margin:0;padding:0}
+.fclear{display:flex;align-items:center;justify-content:center;height:38px;padding:0;border-radius:19px;border:1px solid var(--energy-red);background:var(--bad-soft);color:var(--energy-red)}
+.fclear svg{width:18px;height:18px}
+.fclear:disabled{border-color:var(--line);background:transparent;color:var(--muted);opacity:.5}
 #searchRow input{min-height:44px}
 .filtline{margin-top:2px;color:var(--accent)}
 #respSel.active,#locSel.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
@@ -657,18 +659,16 @@ function pillsHTML(){
   const locs = w.locations.filter(l => w.items.some(i => i.location === l));
   const resps = [...new Set(w.items.map(respOfItem))].sort();
   const divs = [...new Set(w.items.map(divOfItem))].sort();
-  const pill = (id, icon, label, cur, vals, allLabel, counter) => `<label class="fpill ${cur !== 'all' ? 'on' : ''}">${icon}<span>${esc(cur === 'all' ? label : cur)}</span>${caret}<select id="${id}" aria-label="${label}">${opts(vals, cur, allLabel, counter)}</select></label>`;
+  const pill = (id, icon, label, cur, vals, allLabel, counter) => `<label class="fpill ${cur !== 'all' ? 'on' : ''}"><span>${esc(cur === 'all' ? label : cur)}</span><select id="${id}" aria-label="Filter by ${label}">${opts(vals, cur, allLabel, counter)}</select></label>`;
   const parts = [
-    { on: !!S.q, html: `<button class="fpill ${S.q ? 'on' : ''}" data-act="togglesearch" aria-expanded="${!!(S.searchOpen || S.q)}">${I.search}<span>${S.q ? esc('“' + S.q + '”') : 'Search'}</span></button>` },
+    { on: !!S.q, html: `<button class="fpill ${S.q ? 'on' : ''}" data-act="togglesearch" aria-label="Search" aria-expanded="${!!(S.searchOpen || S.q)}">${I.search}</button>` },
     { on: (S.loc||'all') !== 'all', html: pill('locSel', I.pin, 'Location', S.loc || 'all', locs, 'All locations', cnt(it => it.location)) },
-    { on: (S.resp||'all') !== 'all', html: pill('respSel', I.person, 'Responsible', S.resp || 'all', resps, 'All responsible parties', cnt(respOfItem)) },
+    { on: (S.resp||'all') !== 'all', html: pill('respSel', I.person, 'Resp.', S.resp || 'all', resps, 'All responsible parties', cnt(respOfItem)) },
     { on: (S.div||'all') !== 'all', html: pill('divSel', I.layers, 'Division', S.div || 'all', divs, 'All divisions', cnt(divOfItem)) }
   ];
-  // Active filters move to the front so they are always in view
-  const ordered = parts.filter(p => p.on).concat(parts.filter(p => !p.on));
-  return (anyFilterActive() ? `<button class="fpill clear" data-act="clearfilters">${I.x}<span>Clear all</span></button>` : '') + ordered.map(p => p.html).join('');
+  return parts.map(p => p.html).join('');
 }
-function updatePills(){ const el = $('#fpills'); if(el){ el.innerHTML = pillsHTML(); } }
+function updatePills(){ const el = $('#fpills'); if(el){ const x = el.scrollLeft; el.innerHTML = pillsHTML(); el.scrollLeft = x; } const c = $('#fclear'); if(c) c.disabled = !anyFilterActive(); }
 function chipsHTML(){
   // Counts follow the location and responsible-party filters, so "Not checked" shows what is left for that party
   const scoped = S.walk.items.filter(inScope);
@@ -691,8 +691,8 @@ function renderWalk(){
       <button class="btn sitebtn" data-act="gallery">${I.img}<span>Site photos (${(w.sitePhotos || []).length})</span></button>
       <button class="btn sitebtn" data-act="vendors">${I.share}<span>Vendor updates${pendingCount(w) ? ` <b class="pendn">${pendingCount(w)}</b>` : ''}</span></button>
     </div>
-    <div class="fpills" id="fpills" role="toolbar" aria-label="Filters">${pillsHTML()}</div>
     <div class="chips" id="chips">${chipsHTML()}</div>
+    <div class="frow"><div class="fpills" id="fpills" role="toolbar" aria-label="Filters">${pillsHTML()}</div><button class="fclear" id="fclear" data-act="clearfilters" ${anyFilterActive() ? '' : 'disabled'} aria-label="Clear all filters" title="Clear all filters">${I.x}</button></div>
     <div id="searchRow" ${S.searchOpen || S.q ? '' : 'hidden'}><input type="search" id="q" placeholder="Search item text, number or notes" value="${esc(S.q)}" aria-label="Search items"></div>
   </div>
   <div class="pad" id="list"></div>
