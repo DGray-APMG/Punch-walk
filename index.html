@@ -569,7 +569,7 @@ function renderHome(){
     ${!t || S.needPass ? tplPanelHTML(t) : ''}
     <div class="actions">
       <button class="btn primary block big" data-act="new" ${t ? '' : 'disabled'}>${I.plus}<span>Start a new punch walk</span></button>
-      <label class="btn block big filebtn">${I.file}<span>Open a walk file</span><input type="file" id="walkFile" accept=".json,application/json"></label>
+      <label class="btn block big filebtn">${I.file}<span>Open a walk file</span><input type="file" id="walkFile" accept=".zip,.json,application/zip,application/json"></label>
     </div>
     ${S.pendingImport ? `<div class="panel stack warnpanel">
       <div class="eyebrow">This walk is already on this device</div>
@@ -1110,24 +1110,62 @@ const allPhotoIds = w => [
 ];
 
 /* ---------- full walk file: save and open on another device ---------- */
+// Full walk file: a .zip with walk.json plus every photo as a real JPEG (about a quarter smaller than text, and phones offer Dropbox/OneDrive for zip files)
+const dataURLParts = u => { const m = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(u || ''); return m ? { mime: m[1] || 'image/jpeg', b64: m[3] } : null; };
+const extOf = mime => mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
 async function exportWalkFile(btn){
   const w = S.walk; if(!w) return;
-  btn.disabled = true;
+  if(!window.JSZip){ toast('The zip builder did not load. Reopen the app with signal.'); return; }
+  btn.disabled = true; toast('Building the walk file…', 60000);
   try{
     await flush();
     const ids = [...new Set(allPhotoIds(w))];
-    const photos = (await Promise.all(ids.map(id => DB.get('photos', id)))).filter(Boolean);
+    const zip = new window.JSZip();
+    const meta = [];
+    for(const id of ids){
+      const p = await DB.get('photos', id); if(!p) continue;
+      const m = Object.assign({}, p);
+      for(const key of ['src', 'ann']){
+        const d = dataURLParts(p[key]);
+        if(d){ const name = `photos/${p.id}${key === 'ann' ? '-marked' : ''}.${extOf(d.mime)}`; zip.file(name, d.b64, { base64:true, binary:true }); m[key] = { file:name, mime:d.mime }; }
+      }
+      meta.push(m);
+    }
     w.lastExported = Date.now(); await DB.put('walks', w.id, w);
-    const file = { format:'punch-walk-walk', v:1, exported:w.lastExported, walk:w, photos };
-    const blob = new Blob([JSON.stringify(file)], { type:'application/json' });
-    showFileReady(`Punch Walk - ${safeName(w.stand)} - ${w.date} - full walk.json`, blob,
-      'Save this file to your computer, Files, OneDrive or Dropbox. Open it in Punch Walk on any device with "Open a walk file" on the home screen. It holds the whole walk, including every photo.');
-  }catch(err){ toast('Could not build the walk file.'); }
+    zip.file('walk.json', JSON.stringify({ format:'punch-walk-walk', v:2, exported:w.lastExported, walk:w, photos:meta }));
+    const blob = await zip.generateAsync({ type:'blob', compression:'STORE', mimeType:'application/zip', streamFiles:true });
+    const t = $('.toast'); if(t) t.hidden = true;
+    showFileReady(`Punch Walk - ${safeName(w.stand)} - ${w.date} - full walk.zip`, blob,
+      'Tap Share, then Save to Files and pick your Dropbox or OneDrive folder (or tap the Dropbox or OneDrive app if it is listed). Open it later on any device with "Open a walk file" on the home screen. Do not unzip it; it holds the whole walk, including every photo.');
+  }catch(err){ const t = $('.toast'); if(t) t.hidden = true; toast('Could not build the walk file. Close other apps and try again.', 5000); }
   finally{ btn.disabled = false; }
 }
 async function readWalkFile(file){
   let data;
-  try{ data = JSON.parse(await file.text()); }catch(e){ toast('That file is not a Punch Walk walk file.'); return; }
+  try{
+    const head = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+    if(head[0] === 0x50 && head[1] === 0x4B){
+      // Zip walk file: rebuild each photo from its JPEG
+      if(!window.JSZip){ toast('The zip reader did not load. Reopen the app with signal.'); return; }
+      toast('Opening the walk file…', 60000);
+      const zip = await window.JSZip.loadAsync(file);
+      const wj = zip.file('walk.json'); if(!wj) throw new Error('no walk.json');
+      data = JSON.parse(await wj.async('string'));
+      for(const p of (Array.isArray(data.photos) ? data.photos : [])){
+        for(const key of ['src', 'ann']){
+          const ref = p[key];
+          if(ref && typeof ref === 'object' && ref.file){
+            const entry = zip.file(ref.file);
+            const mime = /^image\/(jpeg|png|webp)$/.test(ref.mime) ? ref.mime : 'image/jpeg';
+            p[key] = entry ? `data:${mime};base64,` + await entry.async('base64') : null;
+          }
+        }
+      }
+      const t = $('.toast'); if(t) t.hidden = true;
+    } else {
+      data = JSON.parse(await file.text());
+    }
+  }catch(e){ const t = $('.toast'); if(t) t.hidden = true; toast('That file is not a Punch Walk walk file. If you unzipped it, open the original .zip file.', 5000); return; }
   if(!data || data.format !== 'punch-walk-walk' || !data.walk || !Array.isArray(data.walk.items)){
     toast(data && data.format === 'punch-walk-vendor-response' ? 'That is a vendor response. Open the walk, then load it under Vendor updates.' : 'That file is not a Punch Walk walk file.');
     return;
