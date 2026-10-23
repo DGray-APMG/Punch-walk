@@ -611,7 +611,10 @@ function renderWalkForm(w){
     <button class="btn primary block" type="submit">${isNew ? 'Start walk' : 'Save details'}</button>
     ${isNew ? '' : `<div class="panel stack"><div class="eyebrow">Move this walk to another device</div>
       <div class="note">Save the full walk, with every photo, as one file. Open it in Punch Walk on your computer to keep managing the punch list there. Once it is saved, you can delete the walk from this phone.${w.lastExported ? ` Last saved ${esc(new Date(w.lastExported).toLocaleString())}.` : ''}</div>
-      <button class="btn block" type="button" data-act="exportwalk">${I.share}<span>Save full walk file</span></button></div>`}
+      <button class="btn block" type="button" data-act="exportwalk">${I.share}<span>Save full walk file</span></button></div>
+    <div class="panel stack"><div class="eyebrow">Download everything</div>
+      <div class="note">One .zip with the full walk file, a PDF of all items and photos, the Excel punch list, every photo as a JPEG, and vendor task files. Save it to Dropbox and unzip it on your computer.</div>
+      <button class="btn primary block" type="button" data-act="package">${I.file}<span>Download package</span></button></div>`}
     ${isNew ? '' : `<button class="btn danger block" type="button" data-act="delwalk" id="delWalkBtn">${I.trash}<span>Delete this walk</span></button>`}
   </form>`;
 }
@@ -962,6 +965,7 @@ function renderReport(){
       <button type="button" class="btn primary block" data-r="pdf">${I.report}<span>Build PDF report</span></button>
       <button type="button" class="btn block" data-r="xlsx">${I.file}<span>Build Excel punch list</span></button>
       <button type="button" class="btn block" data-r="photos" id="r-photoBtn">${I.share}<span>Share or save photos</span></button>
+      <button type="button" class="btn block" data-r="package">${I.file}<span>Download package (everything)</span></button>
       <div class="note" id="repMsg">Each file opens a Share option: pick Mail to email it, or Dropbox to save it there. The PDF, Excel file and photos all use the filters and sort above.</div>
     </div>
     <div id="repPreview" class="stack"></div>
@@ -981,6 +985,7 @@ function renderReport(){
     else if(r === 'pdf') makePDF(b);
     else if(r === 'xlsx') makeXLSX(b);
     else if(r === 'photos') exportPhotos(reportItems(S.walk, repOpts()), b, $('#repMsg'));
+    else if(r === 'package') openPackageSheet();
   });
   const read = () => {
     o.resp = [...form.querySelectorAll('input[data-g="resp"]:checked')].map(x => x.value);
@@ -1066,15 +1071,18 @@ async function renderGallery(){
       <input type="text" class="g-cap" id="cap-${esc(p.id)}" data-pid="${esc(p.id)}" value="${esc(p.caption || '')}" placeholder="Caption (optional)" aria-label="Caption for site photo ${i + 1}">
     </div>` : '').join('');
 }
-async function exportSitePhotos(btn){
+async function sitePhotoList(){
   const w = S.walk;
   const recs = (await Promise.all((w.sitePhotos || []).map(id => DB.get('photos', id)))).filter(Boolean);
   const prefix = `${safeName(w.stand)} - ${w.date}`;
-  const list = recs.map((p, i) => {
+  return recs.map((p, i) => {
     const cap = (p.caption || '').trim() ? safeName(p.caption).replace(/\s+/g, ' ').slice(0, 50).trim() : '';
     return { folder:'', name: `${prefix} - Site photo ${String(i + 1).padStart(2, '0')}${cap ? ' - ' + cap : ''}.jpg`, url: p.ann || p.src };
   });
-  await deliverPhotos(list, `${prefix} - Site photos`, btn, null);
+}
+async function exportSitePhotos(btn){
+  const w = S.walk;
+  await deliverPhotos(await sitePhotoList(), `${safeName(w.stand)} - ${w.date} - Site photos`, btn, null);
 }
 
 /* ---------- shared file crypto (stand-number lock for vendor files) ---------- */
@@ -1263,7 +1271,8 @@ async function buildVendorFile(btn){
   if(!normStand(w.stand)){ toast('Add the stand number in Walk details first. It is the vendor password.'); return; }
   const items = vendorItems();
   if(!items.length){ toast('No items match. Change the responsible party or include more statuses.'); return; }
-  const email = ($('#v-cpmEmail').value || '').trim();
+  const emailEl = $('#v-cpmEmail');
+  const email = ((emailEl ? emailEl.value : await DB.get('meta', 'cpmEmail')) || '').trim();
   btn.disabled = true; toast('Building vendor file…');
   try{
     const out = [];
@@ -1448,6 +1457,7 @@ app.addEventListener('click', async e => {
   else if(act === 'gallery') go('gallery');
   else if(act === 'vendors') go('vendors');
   else if(act === 'exportwalk') exportWalkFile(b);
+  else if(act === 'package') openPackageSheet();
   else if(act === 'impreplace') importWalk(S.pendingImport.data, false);
   else if(act === 'impcopy') importWalk(S.pendingImport.data, true);
   else if(act === 'impcancel'){ S.pendingImport = null; renderHome(); }
@@ -1919,6 +1929,7 @@ async function openAnnotator(photo){
 /* ---------- export ---------- */
 const MIME = { pdf:'application/pdf', xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', zip:'application/zip', jpg:'image/jpeg', json:'application/json' };
 function showFileReady(filename, data, note){
+  if(S.capture){ S.capture.push({ name:filename, blob: data instanceof Blob ? data : new Blob([data]) }); return; }
   const ext = filename.split('.').pop().toLowerCase();
   const blob = data instanceof Blob && data.type ? data : new Blob([data], { type: MIME[ext] || 'application/octet-stream' });
   const file = new File([blob], filename, { type: blob.type });
@@ -1957,7 +1968,7 @@ async function saveFile(filename, data, msgEl){
 }
 const safeName = s => String(s || 'Stand').replace(/[\\/:*?"<>|]+/g, '-').trim();
 function dataURLBytes(u){ const b = atob(u.slice(u.indexOf(',') + 1)); const a = new Uint8Array(b.length); for(let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
-async function exportPhotos(items, btn, msgEl){
+async function itemPhotoList(items){
   const w = S.walk; const list = [];
   for(const loc of w.locations) for(const it of items.filter(x => x.location === loc)){
     const recs = (await Promise.all(it.photos.map(id => DB.get('photos', id)))).filter(Boolean);
@@ -1968,6 +1979,10 @@ async function exportPhotos(items, btn, msgEl){
       else list.push({ folder:safeName(loc), name:`${base}${n}.jpg`, url:p.src });
     });
   }
+  return list;
+}
+async function exportPhotos(items, btn, msgEl){
+  const w = S.walk; const list = await itemPhotoList(items);
   const scope = items.length === 1 ? ` - item ${safeName(items[0].no || '')}` : '';
   await deliverPhotos(list, `${safeName(w.stand)} - ${w.date}${scope} - punch photos`, btn, msgEl);
 }
@@ -2015,7 +2030,7 @@ async function deliverPhotos(list, zipBase, btn, msgEl){
 }
 
 async function makePDF(btn){
-  const msg = $('#repMsg');
+  const msg = $('#repMsg') || {};
   if(!window.jspdf){ msg.textContent = 'The PDF builder did not load. Check the connection and reopen the app.'; return; }
   const w = S.walk, o = repOpts(), items = reportItems(w, o);
   const siteIds = o.site ? (w.sitePhotos || []) : [];
@@ -2169,7 +2184,7 @@ function reportScopeName(o){
 }
 
 async function makeXLSX(btn){
-  const msg = $('#repMsg');
+  const msg = $('#repMsg') || {};
   if(!window.XLSX){ msg.textContent = 'The Excel writer did not load.'; return; }
   const w = S.walk, o = repOpts(), items = reportItems(w, o);
   if(!items.length){ msg.textContent = 'No items match these filters.'; return; }
@@ -2190,6 +2205,109 @@ async function makeXLSX(btn){
     await saveFile(`Punch Walk - ${safeName(w.stand)} - ${w.date}${reportScopeName(o)}.xlsx`, new Blob([out]), msg);
   }catch(err){ msg.textContent = 'Could not build the Excel file.'; }
   btn.disabled = false;
+}
+
+/* ---------- download package: everything for one walk in a single .zip ---------- */
+function packageVendorParties(){
+  const w = S.walk, vo = S.vendorOpts || { open:true, todo:false };
+  const m = {};
+  w.items.forEach(i => { if((i.status === 'open') || (vo.todo && !i.status)){ const k = i.resp || 'Unassigned'; m[k] = (m[k] || 0) + 1; } });
+  return Object.entries(m).sort((a, b) => a[0].localeCompare(b[0]));
+}
+async function openPackageSheet(){
+  const w = S.walk; if(!w) return;
+  await flush();
+  // Rough size: photos go in the walk file, the photo folders and the PDF
+  let bytes = 0, shown = 0;
+  for(const id of new Set(allPhotoIds(w))){ const p = await DB.get('photos', id); if(!p) continue; const a = (p.src || '').length, b = (p.ann || '').length; bytes += (a + b) * 0.75; shown += (b || a) * 0.75; }
+  const parties = packageVendorParties();
+  const mb = n => n > 1048576 ? Math.max(1, Math.round(n / 1048576)) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+  const est = { walk: bytes, pdf: shown, photos: bytes, xlsx: 30000, vendor: parties.length * 200000 };
+  const root = $('#sheetRoot');
+  const row = (k, label, note, on, disabled) => `<label class="check"><input type="checkbox" data-pk="${k}" ${on ? 'checked' : ''} ${disabled ? 'disabled' : ''}> <span><b>${label}</b><br><span class="note">${note}</span></span></label>`;
+  root.innerHTML = `<div class="sheet-back" data-s="close"><div class="sheet" role="dialog" aria-label="Download package">
+    <div class="eyebrow">Download package</div>
+    <div class="note">Builds one .zip for ${esc(w.stand || 'this walk')}. Save it to Dropbox, then unzip it on your computer.</div>
+    ${row('walk', 'Full walk file (.zip)', 'Reopen the walk on any device. Keep it zipped.', true)}
+    ${row('pdf', 'PDF report', 'All items with photos and site photos.', true)}
+    ${row('xlsx', 'Excel punch list', 'All items.', true)}
+    ${row('photos', 'Photos as JPEGs', 'Folders by location, plus site photos.', true)}
+    ${row('vendor', 'Vendor task files', parties.length ? `One per responsible party with Not complete items: ${parties.map(([k, n]) => `${esc(k)} (${n})`).join(', ')}.` : 'No Not complete items to send.', parties.length > 0 && !!normStand(w.stand), !parties.length || !normStand(w.stand))}
+    <div class="note mono" id="pkSize"></div>
+    <button class="btn primary block" data-s="build">${I.file}<span>Build package</span></button>
+    <button class="btn block" data-s="close">Close</button>
+  </div></div>`;
+  const picks = () => Object.fromEntries([...root.querySelectorAll('[data-pk]')].map(x => [x.dataset.pk, x.checked]));
+  const size = () => { const p = picks(); const t = Object.keys(est).reduce((a, k) => a + (p[k] ? est[k] : 0), 0); const el = $('#pkSize'); if(el) el.textContent = `About ${mb(t)}${t > 300 * 1048576 ? ' · large: close other apps first, or leave out the photos' : ''}`; };
+  size();
+  root.onchange = size;
+  root.onclick = async e => {
+    const b = e.target.closest('[data-s]'); if(!b) return;
+    if(b.classList.contains('sheet-back') && e.target !== b) return;
+    if(b.dataset.s === 'close'){ root.innerHTML = ''; root.onclick = null; root.onchange = null; }
+    else if(b.dataset.s === 'build'){
+      const p = picks(); if(!Object.values(p).some(Boolean)){ toast('Pick at least one item.'); return; }
+      root.innerHTML = ''; root.onclick = null; root.onchange = null;
+      await buildPackage(p);
+    }
+  };
+}
+async function buildPackage(p){
+  const w = S.walk; if(!w) return;
+  if(!window.JSZip){ toast('The zip builder did not load. Reopen the app with signal.'); return; }
+  const base = `Punch Walk - ${safeName(w.stand)} - ${w.date} - package`;
+  const dummy = document.createElement('button');
+  const keepRep = w.reportOpts, keepVo = S.vendorOpts;
+  const files = [];
+  const step = t => toast(`Building package: ${t}…`, 120000);
+  try{
+    await flush();
+    S.capture = [];
+    if(p.walk){ step('walk file'); await exportWalkFile(dummy); }
+    if(p.pdf || p.xlsx){
+      w.reportOpts = defaultRepOpts();
+      if(p.pdf){ step('PDF report'); await makePDF(dummy); }
+      if(p.xlsx){ step('Excel punch list'); await makeXLSX(dummy); }
+      w.reportOpts = keepRep;
+    }
+    S.capture.forEach(f => files.push({ path: f.name, data: f.blob }));
+    if(p.vendor){
+      step('vendor task files');
+      for(const [party] of packageVendorParties()){
+        S.capture = []; S.vendorOpts = Object.assign({ open:true, todo:false, photos:true }, keepVo || {}, { resp: party, open:true });
+        await buildVendorFile(dummy);
+        S.capture.forEach(f => files.push({ path: 'Vendor task files/' + f.name, data: f.blob }));
+      }
+      S.vendorOpts = keepVo;
+    }
+    S.capture = null;
+    if(p.photos){
+      step('photos');
+      const list = (await itemPhotoList(w.items)).map(f => Object.assign(f, { folder: 'Photos/' + f.folder }));
+      (await sitePhotoList()).forEach(f => list.push(Object.assign(f, { folder: 'Photos/Site photos' })));
+      const used = new Set();
+      list.forEach(f => { let path = `${f.folder}/${f.name}`, n = 2; while(used.has(path)){ path = `${f.folder}/${f.name.replace(/\.jpg$/, '')} (${n++}).jpg`; } used.add(path); files.push({ path, data: dataURLBytes(f.url) }); });
+    }
+    if(!files.length){ toast('Nothing to put in the package.'); return; }
+    step('zip');
+    const zip = new window.JSZip(); const folder = zip.folder(base);
+    files.forEach(f => folder.file(f.path, f.data, { binary:true }));
+    folder.file('Read me.txt', [
+      `Punch walk package for ${w.stand || ''}${w.address ? ' - ' + w.address : ''}`, `Walk date: ${w.date || ''}`, `Created: ${new Date().toLocaleString()}`, '',
+      'Full walk file (.zip): open it in Punch Walk with "Open a walk file" to keep working. Do not unzip it.',
+      'PDF and Excel: all items, with photos in the PDF.',
+      'Photos: every item photo by location (marked-up and original versions), plus site photos.',
+      'Vendor task files: email each one to its vendor with the vendor page link. The password is the stand number.'
+    ].join('\r\n'));
+    const blob = await zip.generateAsync({ type:'blob', compression:'STORE', mimeType:'application/zip', streamFiles:true });
+    const t = $('.toast'); if(t) t.hidden = true;
+    showFileReady(base + '.zip', blob, 'Tap Share, then Save to Files and pick your Dropbox or OneDrive folder (or tap Dropbox if it is listed). On your computer, unzip the package. Keep the full walk file inside it zipped.');
+  }catch(err){
+    const t = $('.toast'); if(t) t.hidden = true;
+    toast('Could not build the package. Close other apps, or leave out the photos, and try again.', 6000);
+  }finally{
+    S.capture = null; w.reportOpts = keepRep; S.vendorOpts = keepVo;
+  }
 }
 
 /* ---------- misc ---------- */
