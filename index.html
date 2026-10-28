@@ -314,6 +314,11 @@ h2{font-size:26px;color:var(--accent)}
 .foot-note{display:flex;gap:12px;align-items:center}
 .foot-note img{width:44px;height:44px;flex:none}
 .pendn{background:var(--energy-red)}
+.optbtn{justify-content:flex-start;text-align:left;gap:12px;padding:12px 14px}
+.optbtn .grow{display:flex;flex-direction:column;gap:2px;min-width:0}
+.optbtn .note{font-weight:500;white-space:normal}
+.optbtn svg{flex:none}
+.iconbtn .pendn{margin-left:2px}
 .brandbar{background:#ffffff;border-bottom-color:#D9E1EA}
 .brandbar .iconbtn{background:#ffffff;color:#101010!important;border-color:#D9E1EA}
 .wbtns .sitebtn{flex-wrap:nowrap;white-space:nowrap;min-width:0;overflow:hidden}
@@ -609,9 +614,6 @@ function renderWalkForm(w){
     <label class="f"><span>Walked by</span><input type="text" id="f-by" value="${esc(w.by)}" placeholder="Your name"></label>
     <label class="f"><span>Attendees</span><textarea id="f-att" placeholder="Names and companies on the walk">${esc(w.attendees)}</textarea></label>
     <button class="btn primary block" type="submit">${isNew ? 'Start walk' : 'Save details'}</button>
-    ${isNew ? '' : `<div class="panel stack"><div class="eyebrow">Move this walk to another device</div>
-      <div class="note">Save the full walk, with every photo, as one file. Open it in Punch Walk on your computer to keep managing the punch list there. Once it is saved, you can delete the walk from this phone.${w.lastExported ? ` Last saved ${esc(new Date(w.lastExported).toLocaleString())}.` : ''}</div>
-      <button class="btn block" type="button" data-act="exportwalk">${I.share}<span>Save full walk file</span></button></div>`}
     ${isNew ? '' : `<button class="btn danger block" type="button" data-act="delwalk" id="delWalkBtn">${I.trash}<span>Delete this walk</span></button>`}
   </form>`;
 }
@@ -718,14 +720,11 @@ function renderWalk(){
     <button class="iconbtn" data-act="home" aria-label="All walks">${I.back}</button>
     <div class="grow"><div class="title">${esc(w.stand || 'Untitled stand')}</div><div class="sub">${esc(w.address || fmtDate(w.date))}</div></div>
     <button class="iconbtn" data-act="edit" aria-label="Walk details">${I.gear}</button>
-    <button class="iconbtn" data-act="report">${I.report}<span>Report</span></button>
+    <button class="iconbtn" data-act="report" aria-label="Report, vendor updates and walk file">${I.report}<span>Report</span>${pendingCount(w) ? `<b class="pendn">${pendingCount(w)}</b>` : ''}</button>
   </div></header>
   <div class="whead pad">
     <div id="progWrap">${progBar(c)}<div class="note mono" style="margin-top:6px" id="progText">${c.total - c.todo} of ${c.total} checked · ${c.open} not complete</div></div>
-    <div class="wbtns">
-      <button class="btn sitebtn" data-act="gallery">${I.img}<span>Site photos (${(w.sitePhotos || []).length})</span></button>
-      <button class="btn sitebtn" data-act="vendors">${I.share}<span>Vendor updates${pendingCount(w) ? ` <b class="pendn">${pendingCount(w)}</b>` : ''}</span></button>
-    </div>
+    <button class="btn block sitebtn" data-act="gallery">${I.img}<span>Site photos (${(w.sitePhotos || []).length})</span></button>
     <div class="chips" id="chips">${chipsHTML()}</div>
     <div class="frow"><input type="search" id="q" placeholder="Search items or notes" value="${esc(S.q)}" aria-label="Search items"><button class="fbtn" id="fbtn" data-act="filtersheet" aria-haspopup="dialog">${I.filter}<span>Filter</span></button></div>
     <div id="fbar"></div>
@@ -927,6 +926,12 @@ function renderReport(){
   app.innerHTML = `
   <header class="bar"><div class="bar-in pad"><button class="iconbtn" data-act="backwalk" aria-label="Back">${I.back}</button><div class="grow"><div class="title">Report</div><div class="sub">${esc(w.stand)} · ${esc(fmtDate(w.date))}</div></div></div></header>
   <form id="repForm" class="pad section stack" autocomplete="off">
+    <div class="panel stack">
+      <div class="eyebrow">Options</div>
+      <button type="button" class="btn block optbtn" data-act="vendors">${I.share}<span class="grow"><b>Vendor updates</b><span class="note">Send task packages to vendors and review their responses</span></span>${pendingCount(w) ? `<b class="pendn">${pendingCount(w)}</b>` : ''}</button>
+      <button type="button" class="btn block optbtn" data-act="exportwalk">${I.file}<span class="grow"><b>Save full walk file</b><span class="note">Move this walk to another device, with every photo${w.lastExported ? `. Last saved ${esc(new Date(w.lastExported).toLocaleString())}` : ''}</span></span></button>
+    </div>
+    <div class="eyebrow" style="margin-top:6px">Build a report</div>
     <div class="panel stack">
       <div class="eyebrow">Include</div>
       <div class="presets">
@@ -1225,7 +1230,7 @@ async function renderVendors(){
   const pend = pendingCount(w);
   app.innerHTML = `
   <header class="bar"><div class="bar-in pad">
-    <button class="iconbtn" data-act="backwalk" aria-label="Back to walk">${I.back}</button>
+    <button class="iconbtn" data-act="report" aria-label="Back to report">${I.back}</button>
     <div class="grow"><div class="title">Vendor updates</div><div class="sub">${esc(w.stand)} · ${pend} waiting for review</div></div>
   </div></header>
   <div class="pad section stack">
