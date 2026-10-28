@@ -611,10 +611,7 @@ function renderWalkForm(w){
     <button class="btn primary block" type="submit">${isNew ? 'Start walk' : 'Save details'}</button>
     ${isNew ? '' : `<div class="panel stack"><div class="eyebrow">Move this walk to another device</div>
       <div class="note">Save the full walk, with every photo, as one file. Open it in Punch Walk on your computer to keep managing the punch list there. Once it is saved, you can delete the walk from this phone.${w.lastExported ? ` Last saved ${esc(new Date(w.lastExported).toLocaleString())}.` : ''}</div>
-      <button class="btn block" type="button" data-act="exportwalk">${I.share}<span>Save full walk file</span></button></div>
-    <div class="panel stack"><div class="eyebrow">Download everything</div>
-      <div class="note">One .zip with the full walk file, a PDF of all items and photos, the Excel punch list, every photo as a JPEG, and vendor task files. Save it to Dropbox and unzip it on your computer.</div>
-      <button class="btn primary block" type="button" data-act="package">${I.file}<span>Download package</span></button></div>`}
+      <button class="btn block" type="button" data-act="exportwalk">${I.share}<span>Save full walk file</span></button></div>`}
     ${isNew ? '' : `<button class="btn danger block" type="button" data-act="delwalk" id="delWalkBtn">${I.trash}<span>Delete this walk</span></button>`}
   </form>`;
 }
@@ -965,7 +962,6 @@ function renderReport(){
       <button type="button" class="btn primary block" data-r="pdf">${I.report}<span>Build PDF report</span></button>
       <button type="button" class="btn block" data-r="xlsx">${I.file}<span>Build Excel punch list</span></button>
       <button type="button" class="btn block" data-r="photos" id="r-photoBtn">${I.share}<span>Share or save photos</span></button>
-      <button type="button" class="btn block" data-r="package">${I.file}<span>Download package (everything)</span></button>
       <div class="note" id="repMsg">Each file opens a Share option: pick Mail to email it, or Dropbox to save it there. The PDF, Excel file and photos all use the filters and sort above.</div>
     </div>
     <div id="repPreview" class="stack"></div>
@@ -985,7 +981,6 @@ function renderReport(){
     else if(r === 'pdf') makePDF(b);
     else if(r === 'xlsx') makeXLSX(b);
     else if(r === 'photos') exportPhotos(reportItems(S.walk, repOpts()), b, $('#repMsg'));
-    else if(r === 'package') openPackageSheet();
   });
   const read = () => {
     o.resp = [...form.querySelectorAll('input[data-g="resp"]:checked')].map(x => x.value);
@@ -1243,9 +1238,12 @@ async function renderVendors(){
       <label class="check"><input type="checkbox" id="v-todo" ${vo.todo ? 'checked' : ''}> Include Not checked items</label>
       <label class="check"><input type="checkbox" id="v-photos" ${vo.photos ? 'checked' : ''}> Include your photos (marked up)</label>
       <label class="f"><span>Your email for vendor replies</span><input type="text" id="v-cpmEmail" inputmode="email" autocomplete="email" value="${esc(cpmEmail)}" placeholder="name@anchorpointmg.com"></label>
+      <label class="f"><span>Respond by (optional)</span><input type="date" id="v-due" value="${esc(w.vendorDue || '')}"></label>
       <div class="note" id="v-count"></div>
-      <button class="btn primary block" data-act="vbuild">${I.file}<span>Build vendor task file</span></button>
-      <button class="btn block" data-act="vcopy">Copy instructions for the vendor</button>
+      <button class="btn primary block" data-act="vpackage">${I.file}<span>Build vendor package</span></button>
+      <div class="note">One .zip with the task file, a punch list PDF, and step-by-step instructions for this stand.</div>
+      <button class="btn block" data-act="vbuild">Task file only</button>
+      <button class="btn block" data-act="vcopy">Copy email text for the vendor</button>
     </div>
     <div class="panel stack">
       <div class="eyebrow">2 · Review vendor responses</div>
@@ -1264,7 +1262,22 @@ function vendorItems(){
 function updateVendorCount(){ const el = $('#v-count'); if(el){ const n = vendorItems().length; el.textContent = `${n} item${n === 1 ? '' : 's'} will be in the file.`; } }
 function vendorInstructions(){
   const w = S.walk;
-  return `Punch list for ${w.stand}${w.address ? ' – ' + w.address : ''}\n\n1. Save the attached task file.\n2. Open ${vendorPageURL()} on your computer or phone.\n3. Open the task file and enter the stand number as the password: ${w.stand}\n4. For each task, add completion photos and notes, and mark it complete.\n5. Create the response file and email it back to me.`;
+  const due = w.vendorDue ? new Date(w.vendorDue + 'T12:00:00').toLocaleDateString(undefined, { month:'long', day:'numeric', year:'numeric' }) : '';
+  return `Punch list for Stand #${w.stand}${w.address ? ' – ' + w.address : ''}
+
+Attached is your vendor package (.zip). Unzip it to find three files:
+- Instructions (PDF): step-by-step directions with screenshots. Start here.
+- Punch list (PDF): your tasks, for reference.
+- Vendor task file (.json): open this on the vendor page.
+
+Steps:
+1. Save and unzip the package. Do not open, edit or rename the task file.
+2. Go to ${vendorPageURL()} on your computer or phone.
+3. Click Choose task file and enter the stand number as the password: ${w.stand}
+4. For each task, add photos of the finished work, add a note, and check "Mark this task complete."
+5. Click Create response file, save it, and email it back to me as an attachment.
+
+Your work saves in your browser as you go, so you can stop and come back on the same device. If you have a lot of photos, send your work in more than one response file. I will email you when each task is accepted or needs more work.${due ? `\n\nPlease send your response by ${due}.` : ''}\n\nLet me know if you have any questions or need assistance with this new process.`;
 }
 async function buildVendorFile(btn){
   const w = S.walk;
@@ -1457,11 +1470,11 @@ app.addEventListener('click', async e => {
   else if(act === 'gallery') go('gallery');
   else if(act === 'vendors') go('vendors');
   else if(act === 'exportwalk') exportWalkFile(b);
-  else if(act === 'package') openPackageSheet();
   else if(act === 'impreplace') importWalk(S.pendingImport.data, false);
   else if(act === 'impcopy') importWalk(S.pendingImport.data, true);
   else if(act === 'impcancel'){ S.pendingImport = null; renderHome(); }
   else if(act === 'vbuild') buildVendorFile(b);
+  else if(act === 'vpackage') buildVendorPackage(b);
   else if(act === 'vcopy'){ const t = vendorInstructions(); try{ await navigator.clipboard.writeText(t); toast('Instructions copied'); }catch(_){ showFileReady('Vendor instructions.txt', new Blob([t], { type:'text/plain' }), 'Copying is blocked here. Save or share the instructions instead.'); } }
   else if(act === 'vimg'){ const p = await DB.get('photos', b.dataset.pid); if(p) showImage(p.src); }
   else if(act === 'vaccept'){ const { s, e } = subEntry(b); if(e){ reviewEntry(s, e, 'accepted'); renderSubs(); toast('Accepted. Item marked Complete.'); } }
@@ -1519,6 +1532,7 @@ app.addEventListener('input', e => {
   if(id === 'q'){ S.q = e.target.value.trim(); renderList(); clearTimeout(S.pillT); S.pillT = setTimeout(() => { updatePills(); refreshCounts(); }, 400); return; }
   if(e.target.classList.contains('g-cap')){ saveCaption(e.target.dataset.pid, e.target.value); return; }
   if(id === 'v-cpmEmail'){ DB.put('meta', 'cpmEmail', e.target.value.trim()); return; }
+  if(id === 'v-due'){ S.walk.vendorDue = e.target.value; saveWalk(); return; }
   if(S.view === 'item'){
     const it = S.walk.items.find(x => x.id === S.itemId); if(!it) return;
     if(id === 'i-notes'){ it.notes = e.target.value; saveWalk(); }
@@ -2124,7 +2138,8 @@ async function makePDF(btn){
       if(y > top) { doc.setFillColor(...SC[k]); doc.rect(M, top + 2, 3, Math.min(y - top, 40) - 2, 'F'); }
       if((it.notes || '').trim()) text(it.notes, M + 10, 10.5, 'normal', ink, CW - 10);
       if(o.photos && it.photos.length){
-        const recs = (await Promise.all(it.photos.map(id => DB.get('photos', id)))).filter(Boolean);
+        let recs = (await Promise.all(it.photos.map(id => DB.get('photos', id)))).filter(Boolean);
+        if(S.pdfMaxPx) recs = await Promise.all(recs.map(async p => Object.assign({}, p, { ann:null, src:(await shrinkDataURL(p.ann || p.src, S.pdfMaxPx, 0.72)).src })));
         const colW = (CW - 10 - 10) / 2, maxH = 200;
         y += 4;
         for(let i = 0; i < recs.length; i += 2){
@@ -2207,106 +2222,137 @@ async function makeXLSX(btn){
   btn.disabled = false;
 }
 
-/* ---------- download package: everything for one walk in a single .zip ---------- */
-function packageVendorParties(){
-  const w = S.walk, vo = S.vendorOpts || { open:true, todo:false };
-  const m = {};
-  w.items.forEach(i => { if((i.status === 'open') || (vo.todo && !i.status)){ const k = i.resp || 'Unassigned'; m[k] = (m[k] || 0) + 1; } });
-  return Object.entries(m).sort((a, b) => a[0].localeCompare(b[0]));
+/* ---------- vendor package: task file + punch list PDF + instructions PDF in one .zip ---------- */
+async function imgData(url){
+  const bl = await fetch(url).then(r => { if(!r.ok) throw new Error(url); return r.blob(); });
+  const src = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(bl); });
+  const im = await loadImg(src);
+  return { src, w: im.naturalWidth, h: im.naturalHeight };
 }
-async function openPackageSheet(){
-  const w = S.walk; if(!w) return;
-  await flush();
-  // Rough size: photos go in the walk file, the photo folders and the PDF
-  let bytes = 0, shown = 0;
-  for(const id of new Set(allPhotoIds(w))){ const p = await DB.get('photos', id); if(!p) continue; const a = (p.src || '').length, b = (p.ann || '').length; bytes += (a + b) * 0.75; shown += (b || a) * 0.75; }
-  const parties = packageVendorParties();
-  const mb = n => n > 1048576 ? Math.max(1, Math.round(n / 1048576)) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
-  const est = { walk: bytes, pdf: shown, photos: bytes, xlsx: 30000, vendor: parties.length * 200000 };
-  const root = $('#sheetRoot');
-  const row = (k, label, note, on, disabled) => `<label class="check"><input type="checkbox" data-pk="${k}" ${on ? 'checked' : ''} ${disabled ? 'disabled' : ''}> <span><b>${label}</b><br><span class="note">${note}</span></span></label>`;
-  root.innerHTML = `<div class="sheet-back" data-s="close"><div class="sheet" role="dialog" aria-label="Download package">
-    <div class="eyebrow">Download package</div>
-    <div class="note">Builds one .zip for ${esc(w.stand || 'this walk')}. Save it to Dropbox, then unzip it on your computer.</div>
-    ${row('walk', 'Full walk file (.zip)', 'Reopen the walk on any device. Keep it zipped.', true)}
-    ${row('pdf', 'PDF report', 'All items with photos and site photos.', true)}
-    ${row('xlsx', 'Excel punch list', 'All items.', true)}
-    ${row('photos', 'Photos as JPEGs', 'Folders by location, plus site photos.', true)}
-    ${row('vendor', 'Vendor task files', parties.length ? `One per responsible party with Not complete items: ${parties.map(([k, n]) => `${esc(k)} (${n})`).join(', ')}.` : 'No Not complete items to send.', parties.length > 0 && !!normStand(w.stand), !parties.length || !normStand(w.stand))}
-    <div class="note mono" id="pkSize"></div>
-    <button class="btn primary block" data-s="build">${I.file}<span>Build package</span></button>
-    <button class="btn block" data-s="close">Close</button>
-  </div></div>`;
-  const picks = () => Object.fromEntries([...root.querySelectorAll('[data-pk]')].map(x => [x.dataset.pk, x.checked]));
-  const size = () => { const p = picks(); const t = Object.keys(est).reduce((a, k) => a + (p[k] ? est[k] : 0), 0); const el = $('#pkSize'); if(el) el.textContent = `About ${mb(t)}${t > 300 * 1048576 ? ' · large: close other apps first, or leave out the photos' : ''}`; };
-  size();
-  root.onchange = size;
-  root.onclick = async e => {
-    const b = e.target.closest('[data-s]'); if(!b) return;
-    if(b.classList.contains('sheet-back') && e.target !== b) return;
-    if(b.dataset.s === 'close'){ root.innerHTML = ''; root.onclick = null; root.onchange = null; }
-    else if(b.dataset.s === 'build'){
-      const p = picks(); if(!Object.values(p).some(Boolean)){ toast('Pick at least one item.'); return; }
-      root.innerHTML = ''; root.onclick = null; root.onchange = null;
-      await buildPackage(p);
-    }
+const loadImg = src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; });
+async function makeInstructionsPDF(info){
+  const { jsPDF } = window.jspdf;
+  const w = S.walk, url = vendorPageURL();
+  const doc = new jsPDF({ unit:'pt', format:'letter' });
+  const W = 612, H = 792, M = 50, CW = W - 2*M;
+  const blue = [0,86,180], red = [228,0,43], ink = [16,16,16], muted = [85,96,108], soft = [238,246,252];
+  let y = M;
+  const need = h => { if(y + h > H - M){ doc.addPage(); y = M; } };
+  const text = (t, size, opts = {}) => {
+    doc.setFont('helvetica', opts.bold ? 'bold' : 'normal'); doc.setFontSize(size); doc.setTextColor(...(opts.color || ink));
+    const x = opts.x || M, width = opts.width || CW;
+    const lines = doc.splitTextToSize(t, width);
+    need(lines.length * size * 1.3);
+    doc.text(lines, x, y + size); y += lines.length * size * 1.3 + (opts.after || 0);
   };
+  const imgs = {};
+  for(const k of ['v1','v2','v3','v5','v6','v7']){ try{ imgs[k] = await imgData(`guide/${k}.jpg`); }catch(e){} }
+  const shot = (k, frac, cap) => {
+    const im = imgs[k]; if(!im) return;
+    const wd = CW * frac - 40, ht = wd * im.h / im.w;
+    need(ht + 24);
+    doc.setDrawColor(217,225,234); doc.setLineWidth(0.8); doc.rect(M + 40 - 0.5, y - 0.5, wd + 1, ht + 1);
+    doc.addImage(im.src, 'JPEG', M + 40, y, wd, ht, undefined, 'FAST'); y += ht + 4;
+    text(cap, 8, { color: muted, x: M + 40, width: wd, after: 8 });
+  };
+  // Header
+  try{ const lg = await imgData('brand/logo-horizontal.png'); const lh = 40, lw = lh * lg.w / lg.h; doc.addImage(lg.src, 'PNG', M, y, lw, lh, undefined, 'FAST'); }catch(e){}
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...blue); doc.text('VENDOR INSTRUCTIONS', W - M, y + 26, { align:'right' });
+  y += 50; doc.setDrawColor(...blue); doc.setLineWidth(2.5); doc.line(M, y, W - M, y); y += 16;
+  text('Completing your punch list items', 22, { bold:true, color: blue, after: 2 });
+  text(`Stand #${w.stand}${w.address ? ' – ' + w.address : ''}`, 13, { bold:true, after: 10 });
+  // Key facts box
+  const facts = [
+    ['Vendor page', url, true],
+    ['Password', `${w.stand}  (the stand number)`],
+    ['Task file', info.taskFile],
+    ['Tasks', `${info.count} task${info.count === 1 ? '' : 's'}${info.resp ? ' for ' + info.resp : ''}`]
+  ];
+  if(info.due) facts.push(['Respond by', info.due]);
+  const boxH = facts.length * 17 + 16; need(boxH);
+  doc.setFillColor(...soft); doc.rect(M, y, CW, boxH, 'F'); doc.setFillColor(129,193,234); doc.rect(M, y, 4, boxH, 'F');
+  let fy = y + 20;
+  facts.forEach(([k, v, link]) => {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...ink); doc.text(k, M + 16, fy);
+    doc.setFont('helvetica', link ? 'bold' : 'normal'); doc.setTextColor(...(link ? blue : ink));
+    const vv = doc.splitTextToSize(v, CW - 170)[0];
+    if(link) doc.textWithLink(vv, M + 150, fy, { url: v }); else doc.text(vv, M + 150, fy);
+    fy += 17;
+  });
+  y += boxH + 14;
+  text('How it works', 13, { bold:true, after: 2 });
+  text('We track punch list items with a simple web page. For each task assigned to you, add photos of the finished work and a note, then email a response file back to the project manager. There is no account to create and nothing to install. Your photos are not uploaded anywhere; they travel only in the file you email back.', 10, { after: 6 });
+  text('This package contains three files: these instructions, the punch list (PDF) for reference, and your task file (.json), which you open on the vendor page.', 10, { after: 10 });
+  const steps = [
+    ['Save the task file', `Save "${info.taskFile}" to your computer or phone. Do not open, edit or rename it. On iPhone, use Save to Files.`],
+    ['Open the vendor page', `On the same computer or phone, go to ${url}. Use the same device until you send your response, because your work is saved in that browser.`, null],
+    ['Open the task file and enter the password', `Click Choose task file and select the file, or drag it onto the box. Enter the stand number as the password: ${w.stand}. Then click Open tasks.`, [['v1', .9, 'Choose or drag in the task file.'], ['v2', .62, 'The password is the stand number.']]],
+    ['Enter your contact information', 'Enter your name, company and email, then click Continue to tasks. The project manager uses your email to tell you which tasks were accepted or need more work.', [['v3', .55, 'Your contact information.']]],
+    ['Update each task', 'Each card shows the task and the project manager\'s notes and photos on the left. On the right: click Add completion photos (or drag photos onto the box), write a note about what was done, and check Mark this task complete when the work is finished. Use Not updated and Updated at the top to see what is left.', [['v5', .95, 'A completed task: photos added, note written, marked complete.']]],
+    ['Create the response file and email it back', `Click Create response file at the bottom of the page, then Save response file. Email the saved file to the project manager who sent you this package, as an attachment. Start the email opens a pre-filled email, but you still need to attach the file.`, [['v6', .62, 'Save the response file, then attach it to your email.']]]
+  ];
+  steps.forEach(([title, body, pics], i) => {
+    need(60);
+    doc.setFillColor(...blue); doc.circle(M + 12, y + 11, 12, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(255,255,255); doc.text(String(i + 1), M + 12, y + 15.5, { align:'center' });
+    const y0 = y; text(title, 13, { bold:true, x: M + 40, width: CW - 40, after: 2 }); if(y < y0 + 24) y = y0 + 24;
+    text(body, 10, { x: M + 40, width: CW - 40, after: 6 });
+    (pics || []).forEach(([k, f, c]) => shot(k, f, c));
+    y += 6;
+  });
+  text('Coming back later', 13, { bold:true, after: 2 });
+  text('Your photos and notes are saved in the browser as you work. Reopen the vendor page on the same device, click Continue, and enter the stand number again. Do not clear your browser history or use a private or incognito window, or your saved work will be lost.', 10, { after: 4 });
+  shot('v7', .95, 'Pick up where you left off.');
+  text('Tips', 13, { bold:true, after: 2 });
+  [
+    'Wrong password or the file will not open: use the stand number exactly as written above, and make sure you selected the .json task file.',
+    'Response file too large to email: send your work in batches. Create a response file after every 30 to 40 photos, email it, then keep going.',
+    'Need to fix something after sending: make the change and create a new response file.',
+    'A task was sent back as not complete: fix the work, add new photos to that task, and send another response file.',
+    'Questions: contact the project manager who sent you this package.'
+  ].forEach(t => text('•  ' + t, 9.5, { after: 3 }));
+  const n = doc.getNumberOfPages();
+  for(let i = 1; i <= n; i++){ doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(`Stand #${w.stand} · Vendor instructions · Page ${i} of ${n}`, W / 2, H - 24, { align:'center' }); }
+  return doc.output('blob');
 }
-async function buildPackage(p){
-  const w = S.walk; if(!w) return;
-  if(!window.JSZip){ toast('The zip builder did not load. Reopen the app with signal.'); return; }
-  const base = `Punch Walk - ${safeName(w.stand)} - ${w.date} - package`;
-  const dummy = document.createElement('button');
-  const keepRep = w.reportOpts, keepVo = S.vendorOpts;
-  const files = [];
-  const step = t => toast(`Building package: ${t}…`, 120000);
+async function buildVendorPackage(btn){
+  const w = S.walk;
+  if(!normStand(w.stand)){ toast('Add the stand number in Walk details first. It is the vendor password.'); return; }
+  const items = vendorItems();
+  if(!items.length){ toast('No items match. Change the responsible party or include more statuses.'); return; }
+  if(!window.JSZip || !window.jspdf){ toast('The file builders did not load. Reopen the app with signal.'); return; }
+  const vo = S.vendorOpts, keepRep = w.reportOpts;
+  const emailEl = $('#v-cpmEmail'); const email = ((emailEl ? emailEl.value : await DB.get('meta', 'cpmEmail')) || '').trim();
+  const label = safeName(vo.resp || 'All vendors');
+  const base = `Vendor package - ${safeName(w.stand)} - ${label} - ${w.date}`;
+  btn.disabled = true;
   try{
-    await flush();
     S.capture = [];
-    if(p.walk){ step('walk file'); await exportWalkFile(dummy); }
-    if(p.pdf || p.xlsx){
-      w.reportOpts = defaultRepOpts();
-      if(p.pdf){ step('PDF report'); await makePDF(dummy); }
-      if(p.xlsx){ step('Excel punch list'); await makeXLSX(dummy); }
-      w.reportOpts = keepRep;
-    }
-    S.capture.forEach(f => files.push({ path: f.name, data: f.blob }));
-    if(p.vendor){
-      step('vendor task files');
-      for(const [party] of packageVendorParties()){
-        S.capture = []; S.vendorOpts = Object.assign({ open:true, todo:false, photos:true }, keepVo || {}, { resp: party, open:true });
-        await buildVendorFile(dummy);
-        S.capture.forEach(f => files.push({ path: 'Vendor task files/' + f.name, data: f.blob }));
-      }
-      S.vendorOpts = keepVo;
-    }
+    toast('Building vendor package: task file…', 120000);
+    await buildVendorFile(btn); btn.disabled = true;
+    const task = S.capture.find(f => /\.json$/.test(f.name)); if(!task) throw new Error('task file');
+    toast('Building vendor package: punch list…', 120000);
+    w.reportOpts = Object.assign(defaultRepOpts(), { st:{ open: !!vo.open, todo: !!vo.todo, complete:false, na:false }, resp: vo.resp ? [vo.resp] : [], photos: !!vo.photos, site:false, sort:'location' });
+    S.capture = []; S.pdfMaxPx = 1000;
+    await makePDF(btn); btn.disabled = true;
+    S.pdfMaxPx = 0; w.reportOpts = keepRep;
+    const list = S.capture.find(f => /\.pdf$/.test(f.name));
     S.capture = null;
-    if(p.photos){
-      step('photos');
-      const list = (await itemPhotoList(w.items)).map(f => Object.assign(f, { folder: 'Photos/' + f.folder }));
-      (await sitePhotoList()).forEach(f => list.push(Object.assign(f, { folder: 'Photos/Site photos' })));
-      const used = new Set();
-      list.forEach(f => { let path = `${f.folder}/${f.name}`, n = 2; while(used.has(path)){ path = `${f.folder}/${f.name.replace(/\.jpg$/, '')} (${n++}).jpg`; } used.add(path); files.push({ path, data: dataURLBytes(f.url) }); });
-    }
-    if(!files.length){ toast('Nothing to put in the package.'); return; }
-    step('zip');
-    const zip = new window.JSZip(); const folder = zip.folder(base);
-    files.forEach(f => folder.file(f.path, f.data, { binary:true }));
-    folder.file('Read me.txt', [
-      `Punch walk package for ${w.stand || ''}${w.address ? ' - ' + w.address : ''}`, `Walk date: ${w.date || ''}`, `Created: ${new Date().toLocaleString()}`, '',
-      'Full walk file (.zip): open it in Punch Walk with "Open a walk file" to keep working. Do not unzip it.',
-      'PDF and Excel: all items, with photos in the PDF.',
-      'Photos: every item photo by location (marked-up and original versions), plus site photos.',
-      'Vendor task files: email each one to its vendor with the vendor page link. The password is the stand number.'
-    ].join('\r\n'));
-    const blob = await zip.generateAsync({ type:'blob', compression:'STORE', mimeType:'application/zip', streamFiles:true });
+    toast('Building vendor package: instructions…', 120000);
+    const info = { taskFile: task.name, count: items.length, resp: vo.resp || '', email, due: w.vendorDue ? new Date(w.vendorDue + 'T12:00:00').toLocaleDateString(undefined, { month:'long', day:'numeric', year:'numeric' }) : '' };
+    const instr = await makeInstructionsPDF(info);
+    const zip = new window.JSZip();
+    zip.file(`1 - Instructions - read first - ${safeName(w.stand)}.pdf`, instr);
+    if(list) zip.file(`2 - Punch list - ${safeName(w.stand)} - ${label} - ${w.date}.pdf`, list.blob);
+    zip.file(task.name, task.blob);
+    const blob = await zip.generateAsync({ type:'blob', compression:'STORE', mimeType:'application/zip' });
     const t = $('.toast'); if(t) t.hidden = true;
-    showFileReady(base + '.zip', blob, 'Tap Share, then Save to Files and pick your Dropbox or OneDrive folder (or tap Dropbox if it is listed). On your computer, unzip the package. Keep the full walk file inside it zipped.');
+    showFileReady(base + '.zip', blob, 'Share it to Dropbox or Files, or email it to the vendor. Use "Copy email text for the vendor" for the message. The vendor unzips it and starts with the instructions.');
   }catch(err){
     const t = $('.toast'); if(t) t.hidden = true;
-    toast('Could not build the package. Close other apps, or leave out the photos, and try again.', 6000);
+    toast('Could not build the vendor package. Try again, or turn off "Include your photos".', 6000);
   }finally{
-    S.capture = null; w.reportOpts = keepRep; S.vendorOpts = keepVo;
+    S.capture = null; S.pdfMaxPx = 0; w.reportOpts = keepRep; btn.disabled = false;
   }
 }
 
