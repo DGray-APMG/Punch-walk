@@ -1046,6 +1046,7 @@ async function renderGallery(){
   <header class="bar"><div class="bar-in pad">
     <button class="iconbtn" data-act="backwalk" aria-label="Back to walk">${I.back}</button>
     <div class="grow"><div class="title">Site photos</div><div class="sub">${esc(w.stand)} · ${n} photo${n === 1 ? '' : 's'}</div></div>
+    ${n ? `<button class="iconbtn" data-act="gexport" aria-label="Save or share all ${n} site photos as JPEG files">${I.share}<span>Save all</span></button>` : ''}
   </div></header>
   <div class="pad section stack">
     <div class="note">General photos of the project for the record. These are not punch items. Add a caption if it helps, and tap a photo to mark it up.</div>
@@ -1055,8 +1056,6 @@ async function renderGallery(){
     </div>
     <label class="linkbtn filebtn camapp">Or use the phone's camera app (one photo)<input type="file" id="gCam" accept="image/*" capture="environment"></label>
     <div class="gallery" id="gGrid">${n ? '' : '<div class="panel empty">No site photos yet. Take photos of the overall site, elevations, equipment and finished areas to keep with this walk.</div>'}</div>
-    ${n ? `<button class="btn block" data-act="gexport">${I.share}<span>Share or save as JPEG files (${n})</span></button>
-    <div class="note">Each photo is saved as its own JPEG. On a phone, Share lets you save them to Photos or Files, email them, or upload them to Dropbox.</div>` : ''}
   </div>`;
   if(!n) return;
   const recs = await Promise.all(w.sitePhotos.map(id => DB.get('photos', id)));
@@ -1172,6 +1171,10 @@ async function readWalkFile(file){
       const t = $('.toast'); if(t) t.hidden = true;
     } else {
       data = JSON.parse(await file.text());
+      // walk.json picked from inside the walk .zip: photos are separate files, so it cannot be opened alone
+      if(data && Array.isArray(data.photos) && data.photos.some(p => p && p.src && typeof p.src === 'object')){
+        toast('That is the walk.json from inside the walk .zip. Open the .zip file itself, not a file inside it.', 7000); return;
+      }
     }
   }catch(e){ const t = $('.toast'); if(t) t.hidden = true; toast('That file is not a Punch Walk walk file. If you unzipped it, open the original .zip file.', 5000); return; }
   if(!data || data.format !== 'punch-walk-walk' || !data.walk || !Array.isArray(data.walk.items)){
