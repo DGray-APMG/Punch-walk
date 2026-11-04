@@ -1315,7 +1315,7 @@ async function loadVendorResponse(file){
   const w = S.walk;
   let enc;
   try{ enc = JSON.parse(await file.text()); }catch(e){ toast('That is not a vendor response file.'); return; }
-  if(!enc || enc.format !== 'punch-walk-vendor-response'){ toast(enc && enc.format === 'punch-walk-walk' ? 'That is a full walk file. Open it from the home screen.' : 'That is not a vendor response file.'); return; }
+  if(!enc || enc.format !== 'punch-walk-vendor-response'){ toast(enc && enc.format === 'punch-walk-walk' ? 'That is a full walk file. Open it from the home screen.' : enc && enc.format === 'punch-walk-vendor-progress' ? 'That is the vendor\'s team progress file. Ask them for the response file from Create response file.' : 'That is not a vendor response file.', 5000); return; }
   let r;
   try{ r = await decJSON(enc, normStand(w.stand)); }catch(e){ toast(`This response does not belong to ${w.stand || 'this walk'}. Open the walk it was sent for.`); return; }
   if(!r || r.walkId !== w.id){ toast(`This response is for a different walk${r && r.stand ? ' (' + r.stand + ')' : ''}.`); return; }
@@ -2316,6 +2316,8 @@ async function makeInstructionsPDF(info){
     'Wrong password or the file will not open: use the stand number exactly as written above, and make sure you selected the .json task file.',
     'Response file too large to email: send your work in batches. Create a response file after every 30 to 40 photos, email it, then keep going.',
     'Need to fix something after sending: make the change and create a new response file.',
+    'Working as a team: click Share progress with my team to make a team progress file. A teammate opens it on the vendor page (password: the stand number) to see and continue your work.',
+    'Need a record of your work: click Completion report (PDF) for a PDF of your notes and photos that anyone can open.',
     'A task was sent back as not complete: fix the work, add new photos to that task, and send another response file.',
     'Questions: contact the project manager who sent you this package.'
   ].forEach(t => text('•  ' + t, 9.5, { after: 3 }));
