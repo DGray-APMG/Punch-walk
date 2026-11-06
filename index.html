@@ -196,7 +196,8 @@ details.more .stack{padding-top:8px}
 .update{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--accent);color:var(--accent-ink);display:flex;gap:10px;align-items:center;justify-content:space-between;padding-block:8px}
 .update button{background:var(--accent-ink);color:var(--accent);border:0;border-radius:8px;min-height:38px;padding:0 12px;font-weight:700}
 .presets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.presets .chip{justify-content:center;padding:6px 4px;font-size:13.5px}
+.presets .chip{justify-content:center;padding:6px 4px;font-size:13.5px;min-width:0}
+@media (max-width:460px){.presets{grid-template-columns:repeat(2,1fr)}}
 .chips.wrap{flex-wrap:wrap;overflow:visible}
 details.more summary{justify-content:space-between;gap:10px}
 details.more summary .note{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%}
@@ -929,6 +930,8 @@ function renderReport(){
     <div class="panel stack">
       <div class="eyebrow">Options</div>
       <button type="button" class="btn block optbtn" data-act="vendors">${I.share}<span class="grow"><b>Vendor updates</b><span class="note">Send task packages to vendors and review their responses</span></span>${pendingCount(w) ? `<b class="pendn">${pendingCount(w)}</b>` : ''}</button>
+      <button type="button" class="btn block optbtn" data-act="partner">${I.share}<span class="grow"><b>Share with walk partner</b><span class="note">Send the open items to someone walking with you. They view and update them on the vendor page.</span></span></button>
+      <label class="btn block optbtn" style="cursor:pointer">${I.layers}<span class="grow"><b>Merge a walk file</b><span class="note">Combine a teammate's walk of this stand (from their phone) into yours</span></span><input type="file" id="mergeFile" accept=".zip,.json,application/zip,application/json" hidden></label>
       <button type="button" class="btn block optbtn" data-act="exportwalk">${I.file}<span class="grow"><b>Save full walk file</b><span class="note">Move this walk to another device, with every photo${w.lastExported ? `. Last saved ${esc(new Date(w.lastExported).toLocaleString())}` : ''}</span></span></button>
     </div>
     <div class="eyebrow" style="margin-top:6px">Build a report</div>
@@ -1479,6 +1482,7 @@ app.addEventListener('click', async e => {
   else if(act === 'gallery') go('gallery');
   else if(act === 'vendors') go('vendors');
   else if(act === 'exportwalk') exportWalkFile(b);
+  else if(act === 'partner') partnerSheet();
   else if(act === 'impreplace') importWalk(S.pendingImport.data, false);
   else if(act === 'impcopy') importWalk(S.pendingImport.data, true);
   else if(act === 'impcancel'){ S.pendingImport = null; renderHome(); }
@@ -1582,6 +1586,7 @@ app.addEventListener('change', async e => {
       }catch(err){ toast('Could not build the template file.'); }
     }
   }
+  else if(id === 'mergeFile'){ const f = e.target.files && e.target.files[0]; e.target.value = ''; if(f) mergeWalkFile(f); }
   else if(id === 'walkFile'){ const f = e.target.files && e.target.files[0]; e.target.value = ''; if(f) readWalkFile(f); }
   else if(id === 'vrFile'){ const f = e.target.files && e.target.files[0]; e.target.value = ''; if(f) loadVendorResponse(f); }
   else if(id === 'v-resp' || id === 'v-open' || id === 'v-todo' || id === 'v-photos'){
@@ -2365,6 +2370,118 @@ async function buildVendorPackage(btn){
   }finally{
     S.capture = null; S.pdfMaxPx = 0; w.reportOpts = keepRep; btn.disabled = false;
   }
+}
+
+/* ---------- walk partner: share the live punch list to the vendor page ---------- */
+function partnerSheet(){
+  const w = S.walk;
+  if(!normStand(w.stand)){ toast('Add the stand number in Walk details first. It is the password on the vendor page.'); return; }
+  const n = w.items.filter(i => i.status === 'open' || !i.status).length;
+  const root = $('#sheetRoot');
+  root.innerHTML = `<div class="sheet-back" data-s="close"><div class="sheet" role="dialog" aria-label="Share with walk partner">
+    <div class="eyebrow">Share with walk partner</div>
+    <div class="note">Sends every Not checked and Not complete item (${n}), for all trades, with your notes. Your partner opens it on the vendor page with the stand number as the password. No app passcode needed. They can add photos and notes and send a response file back to you.</div>
+    <label class="check"><input type="checkbox" id="wpPhotos"> <span>Include your photos <span class="note">(larger file; leave off for a quick AirDrop or text)</span></span></label>
+    <button class="btn primary block" data-s="go">${I.share}<span>Create walk partner file</span></button>
+    <button class="btn block" data-s="close">Close</button>
+  </div></div>`;
+  root.onclick = async e => {
+    const b = e.target.closest('[data-s]'); if(!b) return;
+    if(b.classList.contains('sheet-back') && e.target !== b) return;
+    if(b.dataset.s === 'close'){ root.innerHTML = ''; root.onclick = null; }
+    else if(b.dataset.s === 'go'){ const ph = $('#wpPhotos').checked; root.innerHTML = ''; root.onclick = null; await buildPartnerFile(ph); }
+  };
+}
+async function buildPartnerFile(withPhotos){
+  const w = S.walk, keep = S.vendorOpts;
+  const dummy = document.createElement('button');
+  try{
+    S.capture = []; S.vendorOpts = Object.assign({}, keep || {}, { resp:'', open:true, todo:true, photos:withPhotos });
+    await buildVendorFile(dummy);
+    const f = S.capture.find(x => /\.json$/.test(x.name)); S.capture = null; S.vendorOpts = keep;
+    if(!f) return;
+    showFileReady(`Walk partner - ${safeName(w.stand)} - ${w.date} - ${new Date().toTimeString().slice(0, 5).replace(':', '')}.json`, f.blob,
+      `AirDrop or text it to your partner. They open ${vendorPageURL()} and choose this file; the password is ${w.stand}. Share a new file after each area to keep them current. When they send a response file back, load it under Report > Vendor updates.`);
+  }catch(e){ toast('Could not create the walk partner file.'); }
+  finally{ S.capture = null; S.vendorOpts = keep; }
+}
+
+/* ---------- merge another device's walk file into this walk ---------- */
+async function parseWalkFile(file){
+  const head = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+  let data;
+  if(head[0] === 0x50 && head[1] === 0x4B){
+    if(!window.JSZip) throw new Error('nozip');
+    const zip = await window.JSZip.loadAsync(file);
+    const wj = zip.file('walk.json'); if(!wj) throw new Error('no walk.json');
+    data = JSON.parse(await wj.async('string'));
+    for(const p of (Array.isArray(data.photos) ? data.photos : [])){
+      for(const key of ['src', 'ann']){
+        const ref = p[key];
+        if(ref && typeof ref === 'object' && ref.file){
+          const entry = zip.file(ref.file);
+          const mime = /^image\/(jpeg|png|webp)$/.test(ref.mime) ? ref.mime : 'image/jpeg';
+          p[key] = entry ? `data:${mime};base64,` + await entry.async('base64') : null;
+        }
+      }
+    }
+  } else {
+    data = JSON.parse(await file.text());
+    if(data && Array.isArray(data.photos) && data.photos.some(p => p && p.src && typeof p.src === 'object')) throw new Error('inner');
+  }
+  return data;
+}
+const normTxt = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+async function mergeWalkFile(file){
+  const w = S.walk;
+  toast('Reading the walk file…', 60000);
+  let data;
+  try{ data = await parseWalkFile(file); }
+  catch(e){ const t = $('.toast'); if(t) t.hidden = true; toast(e && e.message === 'inner' ? 'That is the walk.json from inside the .zip. Choose the .zip file itself.' : 'That file is not a Punch Walk walk file.', 6000); return; }
+  const t0 = $('.toast'); if(t0) t0.hidden = true;
+  if(!data || data.format !== 'punch-walk-walk' || !data.walk || !Array.isArray(data.walk.items)){ toast('That file is not a Punch Walk walk file.'); return; }
+  const other = data.walk;
+  if(normStand(other.stand) && normStand(w.stand) && normStand(other.stand) !== normStand(w.stand)){
+    toast(`That walk file is for stand ${other.stand}, not ${w.stand}.`, 6000); return;
+  }
+  const from = (other.by || '').trim() || 'Partner';
+  const photosById = {}; (data.photos || []).forEach(p => { photosById[p.id] = p; });
+  const addPhoto = async pid => { const p = photosById[pid]; if(!p || !p.src) return false; if(!(await DB.get('photos', pid))) await DB.put('photos', pid, Object.assign({}, p, { walkId: w.id })); return true; };
+  const label = st => ({ open:'Not complete', complete:'Complete', na:'N/A' })[st] || st;
+  const sum = { status:0, notes:0, photos:0, added:0, conflicts:[] };
+  for(const th of other.items){
+    let mine = w.items.find(i => i.id === th.id && normTxt(i.item) === normTxt(th.item))
+      || w.items.find(i => normTxt(i.item) === normTxt(th.item) && i.location === th.location)
+      || w.items.find(i => normTxt(i.item) === normTxt(th.item));
+    if(!mine){
+      if(!th.status && !(th.notes || '').trim() && !(th.photos || []).length) continue;
+      mine = Object.assign({}, th, { id:'c' + uid(), photos:[] }); w.items.push(mine); sum.added++;
+      if(mine.location && !w.locations.includes(mine.location)) w.locations.push(mine.location);
+    }
+    if(th.status){
+      if(!mine.status){ mine.status = th.status; sum.status++; }
+      else if(mine.status !== th.status){ sum.conflicts.push(`#${mine.no || '—'} ${mine.item}: you ${label(mine.status)}, ${from} ${label(th.status)}`); const n = `[${from} marked ${label(th.status)}]`; if(!(mine.notes || '').includes(n)) mine.notes = (mine.notes ? mine.notes + '\n' : '') + n; }
+    }
+    const tn = (th.notes || '').trim();
+    if(tn && !(mine.notes || '').includes(tn)){ mine.notes = (mine.notes || '').trim() ? `${mine.notes}\n${from}: ${tn}` : tn; sum.notes++; }
+    if(th.fa && mine.status === 'complete') mine.fa = true;
+    for(const k of ['resp', 'division', 'location']) if(!mine[k] && th[k]) mine[k] = th[k];
+    mine.photos = mine.photos || [];
+    for(const pid of (th.photos || [])) if(!mine.photos.includes(pid) && await addPhoto(pid)){ mine.photos.push(pid); sum.photos++; }
+  }
+  w.sitePhotos = w.sitePhotos || [];
+  for(const pid of (other.sitePhotos || [])) if(!w.sitePhotos.includes(pid) && await addPhoto(pid)){ w.sitePhotos.push(pid); sum.photos++; }
+  w.vendorSubs = w.vendorSubs || [];
+  for(const s of (other.vendorSubs || [])) if(!w.vendorSubs.some(x => x.id === s.id)){ for(const e of s.items) for(const pid of (e.photoIds || [])) await addPhoto(pid); w.vendorSubs.push(s); }
+  await saveWalk(true);
+  const root = $('#sheetRoot');
+  root.innerHTML = `<div class="sheet-back" data-s="close"><div class="sheet" role="dialog" aria-label="Merge results">
+    <div class="eyebrow">Merged ${esc(from)}'s walk</div>
+    <div class="note">${sum.status} item status${sum.status === 1 ? '' : 'es'} filled in · ${sum.notes} note${sum.notes === 1 ? '' : 's'} added · ${sum.photos} photo${sum.photos === 1 ? '' : 's'} added${sum.added ? ` · ${sum.added} new item${sum.added === 1 ? '' : 's'}` : ''}</div>
+    ${sum.conflicts.length ? `<div class="err">${sum.conflicts.length} item${sum.conflicts.length === 1 ? '' : 's'} had a different status. Your status was kept and theirs was added to the item notes:</div><div class="note" style="max-height:30vh;overflow:auto">${sum.conflicts.map(esc).join('<br>')}</div>` : '<div class="note">No conflicting statuses.</div>'}
+    <button class="btn primary block" data-s="close">Done</button>
+  </div></div>`;
+  root.onclick = e => { const b = e.target.closest('[data-s]'); if(!b) return; if(b.classList.contains('sheet-back') && e.target !== b) return; root.innerHTML = ''; root.onclick = null; renderReport(); };
 }
 
 /* ---------- misc ---------- */
