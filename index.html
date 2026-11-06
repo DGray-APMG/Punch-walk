@@ -1383,7 +1383,8 @@ function reviewEntry(s, e, state, reason){
   const w = S.walk, it = w.items.find(i => i.id === e.itemId); if(!it || !e) return;
   e.review = { state, reason: reason || '', at: Date.now(), prevStatus: it.status || '', prevNotes: it.notes || '', prevFa: !!it.fa };
   if(state === 'accepted'){
-    it.status = 'complete';
+    // Accepting a vendor's work is the CPM's final approval
+    it.status = 'complete'; it.fa = true;
     e.photoIds.forEach(pid => { if(!it.photos.includes(pid)) it.photos.push(pid); });
     const who = s.vendor.name || s.vendor.email || 'Vendor';
     it.notes = (it.notes ? it.notes + '\n' : '') + `Completed by ${who} (${new Date(s.submitted).toLocaleDateString()})${e.notes ? ': ' + e.notes : ''}`;
@@ -1485,7 +1486,7 @@ app.addEventListener('click', async e => {
   else if(act === 'vpackage') buildVendorPackage(b);
   else if(act === 'vcopy'){ const t = vendorInstructions(); try{ await navigator.clipboard.writeText(t); toast('Instructions copied'); }catch(_){ showFileReady('Vendor instructions.txt', new Blob([t], { type:'text/plain' }), 'Copying is blocked here. Save or share the instructions instead.'); } }
   else if(act === 'vimg'){ const p = await DB.get('photos', b.dataset.pid); if(p) showImage(p.src); }
-  else if(act === 'vaccept'){ const { s, e } = subEntry(b); if(e){ reviewEntry(s, e, 'accepted'); renderSubs(); toast('Accepted. Item marked Complete.'); } }
+  else if(act === 'vaccept'){ const { s, e } = subEntry(b); if(e){ reviewEntry(s, e, 'accepted'); renderSubs(); toast('Accepted. Item marked Complete with final approval.'); } }
   else if(act === 'vdeny'){ const box = document.getElementById(`deny-${b.dataset.sub}-${b.dataset.k}`); if(box){ box.hidden = false; const inp = box.querySelector('input'); inp && inp.focus(); } }
   else if(act === 'vdenyok'){ const { s, e } = subEntry(b); if(e){ const r = (document.getElementById(`reason-${b.dataset.sub}-${b.dataset.k}`) || {}).value || ''; reviewEntry(s, e, 'denied', r.trim()); renderSubs(); toast(e.review.keptComplete ? 'Denied. The item was already Complete, so it stays Complete.' : 'Denied. Item stays Not complete.', 5000); } }
   else if(act === 'vundo'){ const { e } = subEntry(b); if(e){ if(undoEntry(e)){ renderSubs(); toast('Review undone.'); } else toast('This item changed after you reviewed it, so Undo is off. Change it on the item screen instead.', 5000); } }
