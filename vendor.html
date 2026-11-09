@@ -80,6 +80,23 @@ textarea{min-height:88px;resize:vertical}
 .mine.dragover{outline:3px dashed var(--accent)}
 .check{display:flex;gap:10px;align-items:center;min-height:44px;font-weight:600}
 .check input{width:22px;height:22px;accent-color:var(--ok)}
+.frow{display:flex;gap:8px;align-items:center}
+.frow input[type=search]{flex:1;min-width:0;min-height:46px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 12px;font-size:16px}
+.fbtn{flex:none;display:inline-flex;align-items:center;gap:6px;height:46px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:15px;cursor:pointer}
+.fbtn svg{width:19px;height:19px}.fbtn.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.fbar{display:flex;align-items:center;gap:10px;padding:6px 6px 6px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--accent)}
+.fbar .ftext{flex:1;min-width:0;font-weight:600;font-size:14px;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fbar button{flex:none;height:34px;padding:0 10px;border-radius:9px;border:1px solid var(--bad);background:var(--bad-soft);color:var(--bad);font-weight:700;font-size:14px;cursor:pointer}
+.sheetback{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}
+.fsheet{background:var(--surface);width:100%;max-width:720px;max-height:88vh;max-height:88dvh;border-radius:18px 18px 0 0;padding:16px 16px 0;display:flex;flex-direction:column}
+@media (min-width:760px){.sheetback{align-items:center}.fsheet{border-radius:18px}}
+.fsheet .fhead{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px}
+.fsheet .fhead h2{margin:0}
+.fsheet .fbody{overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:16px;padding:4px 0 16px}
+.fsheet .fgroup .eyebrow{margin-bottom:8px}
+.fsheet .ffoot{display:grid;grid-template-columns:1fr 2fr;gap:8px;padding:12px 0 calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+.sechead{font-family:var(--font-display);font-weight:400;font-size:22px;letter-spacing:.02em;text-transform:uppercase;color:var(--accent);margin:12px 0 0;display:flex;align-items:baseline;justify-content:space-between;border-left:5px solid var(--energy-red);padding-left:10px}
+.sechead span{font-size:14px;color:var(--muted);font-family:var(--font-mono,monospace)}
 .tools{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 @media (max-width:520px){.tools{grid-template-columns:1fr}}
 .foot{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:5}
@@ -271,14 +288,17 @@ function taskScreen(){
     <div class="summary"><div class="chips">
       <button class="chip" data-f="all">All tasks</button><button class="chip" data-f="todo">Not updated</button><button class="chip" data-f="upd">Updated</button>
     </div><div class="note mono" id="sumText"></div></div>
-    <div id="respRow"></div>
+    <div class="frow"><input type="search" id="vq" placeholder="Search tasks or notes" aria-label="Search tasks" autocomplete="off"><button class="fbtn" id="vfBtn" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"/></svg><span>Filter</span></button></div>
+    <div id="vfbar"></div>
     <div class="stack" id="tasks"></div>
   </div>`;
   $('#editMe').addEventListener('click', () => vendorScreen());
   $('#teamBtn').addEventListener('click', e => makeTeamFile(e.currentTarget));
   $('#pdfBtn').addEventListener('click', () => pdfSheet());
   app.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { S.filter = b.dataset.f; renderTasks(); }));
-  S.resp = [];
+  S.resp = []; S.div = []; S.loc = []; S.q = '';
+  $('#vfBtn').addEventListener('click', () => filterSheet());
+  let qt; $('#vq').addEventListener('input', e => { clearTimeout(qt); qt = setTimeout(() => { S.q = e.target.value.trim(); renderTasks(); }, 300); });
   $('#foot').hidden = false;
   renderTasks();
 }
@@ -290,23 +310,76 @@ function refreshSummary(){
   $('#makeResp').disabled = !u;
   app.querySelectorAll('[data-f]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === S.filter)));
 }
-function respRowHTML(){
-  const parties = [...new Set(S.pkg.items.map(respOf))].sort();
-  if(parties.length < 2) return '';
-  const chip = (v, label, n) => `<button class="chip" data-r="${esc(v)}" aria-pressed="${v === '' ? !S.resp.length : S.resp.includes(v)}">${esc(label)}${n != null ? ` <span class="mono">${n}</span>` : ''}</button>`;
-  return `<div class="rfilter"><div class="eyebrow">Responsible party${S.resp.length ? ` · ${S.resp.length} selected` : ''}</div><div class="chips">${chip('', 'All')}${parties.map(p => chip(p, p, S.pkg.items.filter(i => respOf(i) === p).length)).join('')}</div></div>`;
+/* ---------- filters (same as the project manager's app) ---------- */
+const divOf = i => i.division || 'No division';
+const locOrder = () => [...new Set(S.pkg.items.map(i => i.location || 'Other'))];
+const FGROUPS = [
+  { key:'resp', title:'Responsible party', of: respOf, vals: () => [...new Set(S.pkg.items.map(respOf))].sort() },
+  { key:'div', title:'Division', of: divOf, vals: () => [...new Set(S.pkg.items.map(divOf))].sort() },
+  { key:'loc', title:'Location', of: i => i.location || 'Other', vals: locOrder }
+];
+function matches(i){
+  if(S.resp.length && !S.resp.includes(respOf(i))) return false;
+  if(S.div.length && !S.div.includes(divOf(i))) return false;
+  if(S.loc.length && !S.loc.includes(i.location || 'Other')) return false;
+  const u = S.draft.updates[i.id];
+  if(S.filter === 'upd' && !hasUpd(u)) return false;
+  if(S.filter === 'todo' && hasUpd(u)) return false;
+  if(S.q){ const q = S.q.toLowerCase(); if(![i.item, i.no, i.notes, u && u.notes, i.location, i.resp].some(x => String(x || '').toLowerCase().includes(q))) return false; }
+  return true;
+}
+const scopeN = () => S.resp.length + S.div.length + S.loc.length;
+const anyActive = () => scopeN() > 0 || S.filter !== 'all' || !!S.q;
+function updateFilterUI(){
+  const n = scopeN(), btn = $('#vfBtn');
+  if(btn){ btn.classList.toggle('on', n > 0); btn.querySelector('span').textContent = n ? `Filter (${n})` : 'Filter'; }
+  const bar = $('#vfbar'); if(!bar) return;
+  if(!anyActive()){ bar.innerHTML = ''; return; }
+  const parts = [S.resp, S.div, S.loc].map(v => v.join(', ')).filter(Boolean);
+  if(S.filter !== 'all') parts.push(S.filter === 'upd' ? 'Updated' : 'Not updated');
+  if(S.q) parts.push('“' + S.q + '”');
+  bar.innerHTML = `<div class="fbar"><div class="ftext">${esc(parts.join(' · '))}</div><button id="vfClear" aria-label="Clear all filters">✕ Clear all</button></div>`;
+  $('#vfClear').addEventListener('click', clearFilters);
+}
+function clearFilters(){ S.resp = []; S.div = []; S.loc = []; S.filter = 'all'; S.q = ''; const q = $('#vq'); if(q) q.value = ''; renderTasks(); }
+function filterSheet(){
+  const ov = $('#overlay');
+  const draw = () => {
+    const shown = S.pkg.items.filter(matches).length;
+    const body = ov.querySelector('.fbody'); const y = body ? body.scrollTop : 0;
+    ov.innerHTML = `<div class="sheetback" id="fsBack"><div class="fsheet" role="dialog" aria-modal="true" aria-label="Filter">
+      <div class="fhead"><h2>Filter</h2><button class="btn" id="fsX" aria-label="Close">✕</button></div>
+      <div class="fbody">${FGROUPS.map(g => {
+        const cur = S[g.key], vals = g.vals();
+        if(vals.length < 2 && !cur.length) return '';
+        const chip = (v, label, n) => `<button class="chip" data-k="${g.key}" data-v="${esc(v)}" aria-pressed="${v === '' ? !cur.length : cur.includes(v)}">${esc(label)}${n != null ? ` <span class="mono">${n}</span>` : ''}</button>`;
+        return `<div class="fgroup"><div class="eyebrow">${g.title}${cur.length ? ` · ${cur.length} selected` : ''}</div><div class="chips">${chip('', 'All')}${vals.map(v => chip(v, v, S.pkg.items.filter(i => g.of(i) === v).length)).join('')}</div></div>`;
+      }).join('')}</div>
+      <div class="ffoot"><button class="btn" id="fsClear">Clear all</button><button class="btn primary" id="fsGo">Show ${shown} task${shown === 1 ? '' : 's'}</button></div>
+    </div></div>`;
+    const nb = ov.querySelector('.fbody'); if(nb) nb.scrollTop = y;
+    ov.querySelectorAll('[data-k]').forEach(b => b.addEventListener('click', () => {
+      const k = b.dataset.k, v = b.dataset.v; S[k] = v === '' ? [] : (S[k].includes(v) ? S[k].filter(x => x !== v) : S[k].concat(v));
+      renderTasks(); draw();
+    }));
+    $('#fsClear').addEventListener('click', () => { clearFilters(); draw(); });
+    const close = () => { ov.innerHTML = ''; };
+    $('#fsGo').addEventListener('click', close); $('#fsX').addEventListener('click', close);
+    $('#fsBack').addEventListener('click', e => { if(e.target.id === 'fsBack') close(); });
+  };
+  draw();
 }
 function renderTasks(){
-  const row = $('#respRow');
-  if(row){
-    row.innerHTML = respRowHTML();
-    row.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => {
-      const v = b.dataset.r; S.resp = v === '' ? [] : (S.resp.includes(v) ? S.resp.filter(x => x !== v) : S.resp.concat(v)); renderTasks();
-    }));
-  }
-  const list = S.pkg.items.filter(i => (!S.resp.length || S.resp.includes(respOf(i))) && (S.filter === 'all' || (S.filter === 'upd' ? hasUpd(S.draft.updates[i.id]) : !hasUpd(S.draft.updates[i.id]))));
-  $('#tasks').innerHTML = list.length ? list.map(taskHTML).join('') : '<div class="panel note">No tasks in this view.</div>';
+  const list = S.pkg.items.filter(matches);
+  // Group by location in walk order, like the project manager's app
+  const order = locOrder(); const groups = {};
+  list.forEach(i => { const l = i.location || 'Other'; (groups[l] = groups[l] || []).push(i); });
+  $('#tasks').innerHTML = list.length
+    ? order.filter(l => groups[l]).map(l => `<h3 class="sechead">${esc(l)} <span class="mono">${groups[l].length}</span></h3>${groups[l].map(taskHTML).join('')}`).join('')
+    : `<div class="panel note">No tasks match these filters. ${anyActive() ? '<button class="btn" id="emptyClear">Clear filters</button>' : ''}</div>`;
+  const ec = $('#emptyClear'); if(ec) ec.addEventListener('click', clearFilters);
   list.forEach(i => bindTask(i.id));
+  updateFilterUI();
   refreshSummary();
 }
 function taskHTML(i){
@@ -456,20 +529,29 @@ async function makeTeamFile(btn){
 /* ---------- completion report PDF ---------- */
 function pdfSheet(){
   const ov = $('#overlay');
-  ov.innerHTML = `<div class="lightbox" style="background:rgba(0,0,0,.55)"><div class="panel stack" role="dialog" aria-label="Completion report" style="max-width:520px;width:100%">
+  const parties = [...new Set(S.pkg.items.map(respOf))].sort();
+  let pick = (S.resp || []).slice();
+  ov.innerHTML = `<div class="lightbox" style="background:rgba(0,0,0,.55)"><div class="panel stack" role="dialog" aria-label="Completion report" style="max-width:560px;width:100%;max-height:90vh;overflow:auto">
     <h2>Completion report (PDF)</h2>
     <div class="note">A PDF of your work that anyone can open: each task with your notes, photos and completion status.</div>
     <label class="check"><input type="radio" name="pscope" value="upd" checked> Updated tasks only</label>
     <label class="check"><input type="radio" name="pscope" value="all"> All tasks</label>
+    ${parties.length > 1 ? `<div><div class="eyebrow" id="pRespLbl" style="margin-bottom:8px">Responsible party${pick.length ? ` · ${pick.length} selected` : ''}</div><div class="chips" id="pResp">${['', ...parties].map(p => `<button class="chip" data-p="${esc(p)}" aria-pressed="${p === '' ? !pick.length : pick.includes(p)}">${esc(p || 'All')}${p ? ` <span class="mono">${S.pkg.items.filter(i => respOf(i) === p).length}</span>` : ''}</button>`).join('')}</div></div>` : ''}
     <label class="check"><input type="checkbox" id="pPm" checked> Include the project manager's notes and photos</label>
     <button class="btn primary block" id="pGo">Build PDF</button>
     <button class="btn block" id="pClose">Close</button>
   </div></div>`;
   $('#pClose').addEventListener('click', () => { ov.innerHTML = ''; });
-  $('#pGo').addEventListener('click', async e => { const all = ov.querySelector('[name=pscope]:checked').value === 'all', pm = $('#pPm').checked; e.target.disabled = true; e.target.textContent = 'Building…'; await makeCompletionPDF(all, pm); });
+  ov.querySelectorAll('#pResp [data-p]').forEach(b => b.addEventListener('click', () => {
+    const v = b.dataset.p; pick = v === '' ? [] : (pick.includes(v) ? pick.filter(x => x !== v) : pick.concat(v));
+    ov.querySelectorAll('#pResp [data-p]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.p === '' ? !pick.length : pick.includes(x.dataset.p))));
+    $('#pRespLbl').textContent = pick.length ? `Responsible party · ${pick.length} selected` : 'Responsible party';
+  }));
+  $('#pGo').addEventListener('click', async e => { const all = ov.querySelector('[name=pscope]:checked').value === 'all', pm = $('#pPm').checked; e.target.disabled = true; e.target.textContent = 'Building…'; await makeCompletionPDF(all, pm, pick); });
 }
 async function imgInfo(src){ const im = await loadImage(src); return { w:im.naturalWidth, h:im.naturalHeight }; }
-async function makeCompletionPDF(all, withPm){
+async function makeCompletionPDF(all, withPm, resps){
+  resps = resps || [];
   if(!window.jspdf){ toast('The PDF builder did not load. Reopen this page with signal.'); return; }
   try{
     const { jsPDF } = window.jspdf;
@@ -492,10 +574,10 @@ async function makeCompletionPDF(all, withPm){
     text('PUNCH LIST COMPLETION REPORT', 10, { bold:true, color: blue, after: 2 });
     text(`Stand ${p.stand}`, 22, { bold:true, after: 0 });
     if(p.address) text(p.address, 11, { color: muted, after: 8 });
-    const items = p.items.filter(i => all || hasUpd(S.draft.updates[i.id]));
+    const items = p.items.filter(i => (all || hasUpd(S.draft.updates[i.id])) && (!resps.length || resps.includes(respOf(i))));
     const done = items.filter(i => (S.draft.updates[i.id] || {}).done).length;
     const phs = items.reduce((a, i) => a + ((S.draft.updates[i.id] || {}).photos || []).length, 0);
-    [['Completed by', `${v.name || ''}${v.company ? ', ' + v.company : ''}${v.email ? ' · ' + v.email : ''}`], ['Report date', new Date().toLocaleString()], ['Punch walk', `${p.date || ''}${p.cpm && p.cpm.name ? ' · ' + p.cpm.name : ''}`], ['Summary', `${items.length} task${items.length === 1 ? '' : 's'} · ${done} marked complete · ${phs} photo${phs === 1 ? '' : 's'}`]]
+    [['Completed by', `${v.name || ''}${v.company ? ', ' + v.company : ''}${v.email ? ' · ' + v.email : ''}`], ['Report date', new Date().toLocaleString()], ['Punch walk', `${p.date || ''}${p.cpm && p.cpm.name ? ' · ' + p.cpm.name : ''}`], ['Responsible party', resps.length ? resps.join(', ') : 'All'], ['Summary', `${items.length} task${items.length === 1 ? '' : 's'} · ${done} marked complete · ${phs} photo${phs === 1 ? '' : 's'}`]]
       .forEach(([k, val]) => { doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...muted); doc.text(k.toUpperCase(), M, y + 10); doc.setFont('helvetica', 'normal'); doc.setTextColor(...ink); doc.text(doc.splitTextToSize(val, CW - 110)[0], M + 110, y + 10); y += 15; });
     y += 6; doc.setDrawColor(...blue); doc.setLineWidth(2); doc.line(M, y, W - M, y); y += 12;
     if(!items.length) text('No tasks have been updated yet.', 11, { color: muted });
@@ -525,7 +607,7 @@ async function makeCompletionPDF(all, withPm){
     }
     const n = doc.getNumberOfPages();
     for(let k = 1; k <= n; k++){ doc.setPage(k); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(`Stand ${p.stand} · Completion report · ${v.company || v.name || ''} · Page ${k} of ${n}`, W / 2, H - 22, { align:'center' }); }
-    const name = `Completion report - ${safeN(p.stand)} - ${safeN(v.company || v.name)} - ${new Date().toISOString().slice(0, 10)}.pdf`;
+    const name = `Completion report - ${safeN(p.stand)} - ${safeN(v.company || v.name)}${resps.length ? ' - ' + safeN(resps.join(', ')).slice(0, 40) : ''} - ${new Date().toISOString().slice(0, 10)}.pdf`;
     offerFile(name, doc.output('blob'), 'Completion report ready', 'Save or share this PDF. Anyone can open it. To send your work to the project manager for review, still use <strong>Create response file</strong>.');
   }catch(e){ toast('Could not build the PDF.'); const g = $('#pGo'); if(g){ g.disabled = false; g.textContent = 'Build PDF'; } }
 }
