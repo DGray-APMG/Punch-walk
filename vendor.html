@@ -251,7 +251,7 @@ function passScreen(err){
       // Team progress file: take the teammate's photos, notes and completed tasks
       const local = await store.get(S.pkg.packageId);
       const localN = local ? Object.values(local.updates || {}).filter(hasUpd).length : 0;
-      S.draft = { packageId:S.pkg.packageId, enc:S.enc, label:`${S.pkg.stand}${S.pkg.address ? ' – ' + S.pkg.address : ''} (${S.pkg.items.length} tasks)`, vendor:Object.assign({ name:'', company:'', email:'' }, prog.vendor || {}), updates:prog.updates || {}, extraItems:prog.extraItems || [], series:S.pkg.series || prog.series || '', saved:Date.now(), sharedBy:prog.from || '' };
+      S.draft = { packageId:S.pkg.packageId, enc:S.enc, label:`${S.pkg.stand}${S.pkg.address ? ' – ' + S.pkg.address : ''} (${S.pkg.items.length} tasks)`, vendor:Object.assign({ name:'', company:'', email:'' }, prog.vendor || {}), updates:prog.updates || {}, extraItems:prog.extraItems || [], series:S.pkg.series || prog.series || '', walkKey:walkKey(S.pkg), saved:Date.now(), sharedBy:prog.from || '' };
       S.progEnc = null;
       { const have = new Set(S.pkg.items.map(i => i.id)); (S.draft.extraItems || []).forEach(i => { if(!have.has(i.id)) S.pkg.items.push(i); }); }
       if(localN){
@@ -268,36 +268,57 @@ function passScreen(err){
     await openTasks();
   });
 }
-// After the task file is unlocked: resume saved work, or take over work from an older file in the same series
-async function openTasks(){
+// Every file from the same punch walk (shared punch lists and later vendor packages) shares one saved copy of your work
+const walkKey = p => p ? (p.walkId || ('stand:' + normStand(p.stand))) : '';
+async function draftsForWalk(key, exceptId){
+  const out = [];
+  for(const d of await store.all()){
+    if(d.packageId === exceptId) continue;
+    let k = d.walkKey, items = null;
+    if(!k){ try{ const p = await decJSON(d.enc, S.pass); k = walkKey(p); items = p.items; d.walkKey = k; }catch(e){ continue; } }
+    if(k === key) out.push({ d, items });
+  }
+  return out.sort((a, b) => b.d.saved - a.d.saved);
+}
+// After the task file is unlocked: resume saved work, or carry over your work from earlier files of the same walk
+async function openTasks(fromDraft){
+  const key = walkKey(S.pkg);
   let existing = S.resume || await store.get(S.pkg.packageId);
   let carried = 0;
-  if(!existing && S.pkg.series){
-    const older = (await store.all()).filter(d => d.series === S.pkg.series && d.packageId !== S.pkg.packageId).sort((a, b) => b.saved - a.saved);
+  if(!existing){
+    let older = await draftsForWalk(key, S.pkg.packageId);
+    if(fromDraft && !older.some(x => x.d.packageId === fromDraft.packageId)) older.unshift({ d: fromDraft, items: null });
     if(older.length){
-      const o = older[0];
-      let oldItems = [];
-      try{ oldItems = (await decJSON(o.enc, S.pass)).items || []; }catch(e){}
-      oldItems = oldItems.concat(o.extraItems || []);
       const ids = new Set(S.pkg.items.map(i => i.id));
-      const extra = []; const seen = new Set();
-      oldItems.forEach(i => { if(!ids.has(i.id) && !seen.has(i.id) && hasUpd((o.updates || {})[i.id])){ extra.push(i); seen.add(i.id); } });
-      const updates = {};
-      Object.entries(o.updates || {}).forEach(([k, u]) => { if(ids.has(k) || seen.has(k)){ updates[k] = u; if(hasUpd(u)) carried++; } });
-      existing = { packageId:S.pkg.packageId, series:S.pkg.series, enc:S.enc, vendor:o.vendor || { name:'', company:'', email:'' }, updates, extraItems:extra, saved:Date.now() };
-      for(const d of older) await store.del(d.packageId);
+      const updates = {}, extra = [], seen = new Set();
+      let vendor = null;
+      // Newest first: newer work wins when the same task was updated in more than one file
+      for(const { d, items } of older){
+        if(!vendor && d.vendor && d.vendor.email) vendor = d.vendor;
+        let defs = items;
+        if(!defs){ try{ defs = (await decJSON(d.enc, S.pass)).items || []; }catch(e){ defs = []; } }
+        defs = defs.concat(d.extraItems || []);
+        for(const [k, u] of Object.entries(d.updates || {})){
+          if(!hasUpd(u) || updates[k]) continue;
+          updates[k] = u; carried++;
+          if(!ids.has(k) && !seen.has(k)){ const def = defs.find(i => i.id === k); if(def){ extra.push(def); seen.add(k); } }
+        }
+      }
+      existing = { packageId:S.pkg.packageId, walkKey:key, series:S.pkg.series || '', enc:S.enc, vendor: vendor || (older[0].d.vendor) || { name:'', company:'', email:'' }, updates, extraItems:extra, saved:Date.now(), carriedFrom:older.length };
+      for(const { d } of older) await store.del(d.packageId);
     }
   }
-  S.draft = existing || { packageId:S.pkg.packageId, series:S.pkg.series || '', enc:S.enc, vendor:{ name:'', company:'', email:'' }, updates:{}, extraItems:[], saved:Date.now() };
-  S.draft.enc = S.enc; S.draft.series = S.pkg.series || S.draft.series || '';
-  // Tasks you already updated that are not in the newer file stay in your list
+  S.draft = existing || { packageId:S.pkg.packageId, walkKey:key, series:S.pkg.series || '', enc:S.enc, vendor:{ name:'', company:'', email:'' }, updates:{}, extraItems:[], saved:Date.now() };
+  S.draft.enc = S.enc; S.draft.walkKey = key; S.draft.series = S.pkg.series || S.draft.series || '';
+  // Tasks you already updated that are not in this file stay in your list
   const have = new Set(S.pkg.items.map(i => i.id));
   (S.draft.extraItems || []).forEach(i => { if(!have.has(i.id)) S.pkg.items.push(i); });
   S.draft.label = `${S.pkg.stand}${S.pkg.address ? ' – ' + S.pkg.address : ''} (${S.pkg.items.length} tasks)`;
   S.resume = null;
-  if(carried || (S.pkg.series && existing && existing.extraItems)) { store.put(S.draft.packageId, S.draft); }
+  const wasCarried = !!(existing && existing.carriedFrom);
+  if(wasCarried){ delete S.draft.carriedFrom; await store.put(S.draft.packageId, S.draft); }
   if(S.draft.vendor && S.draft.vendor.email) taskScreen(); else vendorScreen();
-  if(existing && existing.extraItems && S.pkg.series) toast(`Opened the newest file${carried ? `. Your ${carried} updated task${carried === 1 ? '' : 's'} carried over` : ''}.`, 5000);
+  if(wasCarried) toast(`Opened the newest file${carried ? `. Your ${carried} updated task${carried === 1 ? '' : 's'} carried over` : ''}.`, 5000);
 }
 // "Open updated file" on the task screen: load a newer file without going back to the start
 async function openUpdatedFile(file){
@@ -309,8 +330,8 @@ async function openUpdatedFile(file){
   let pkg;
   try{ pkg = await decJSON(enc, S.pass); }catch(e){ S.enc = enc; S.progEnc = null; S.resume = null; $('#foot').hidden = true; return passScreen(); }
   if(pkg.packageId === S.pkg.packageId){ toast('That is the file you already have open.'); return; }
-  S.enc = enc; S.pkg = pkg; S.progEnc = null; S.resume = null;
-  await openTasks();
+  const cur = S.draft; S.enc = enc; S.pkg = pkg; S.progEnc = null; S.resume = null;
+  await openTasks(cur);
 }
 function vendorScreen(err){
   const v = S.draft.vendor || {};
@@ -345,7 +366,7 @@ function taskScreen(){
       <div class="note">Punch walk ${esc(p.date)}${p.gc ? ' · GC: ' + esc(p.gc) : ''} · Sent by ${esc(p.cpm.name || 'the project manager')}${p.cpm.email ? ' (' + esc(p.cpm.email) + ')' : ''}</div>
       <div class="note">Signed in as <strong>${esc(v.name)}</strong>${v.company ? ', ' + esc(v.company) : ''} · ${esc(v.email)} · <button class="chip" id="editMe" style="min-height:30px;padding:2px 10px">Change</button></div>
       <div class="banner">For each task: add photos showing the finished work, add a note if needed, and check "Mark this task complete". When you are done, click <strong>Create response file</strong> and email it back. The original task details cannot be changed here.</div>
-      <div class="tools"><label class="btn filebtn" id="newFileBtn" style="grid-column:1/-1">Open an updated file from the project manager<input type="file" accept=".json,application/json" id="newFile"></label><button class="btn" id="teamBtn">Share progress with my team</button><button class="btn" id="pdfBtn">Completion report (PDF)</button></div>
+      <div class="tools"><label class="btn primary filebtn" id="newFileBtn" style="grid-column:1/-1">Open an updated file from the project manager<input type="file" accept=".json,application/json" id="newFile"></label><button class="btn" id="teamBtn">Share progress with my team</button><button class="btn" id="pdfBtn">Completion report (PDF)</button></div>
     </div>
     <div class="summary"><div class="chips">
       <button class="chip" data-f="all">All tasks</button><button class="chip" data-f="todo">Not updated</button><button class="chip" data-f="upd">Updated</button>
@@ -595,7 +616,7 @@ $('#makeResp').addEventListener('click', async () => {
   try{
     const items = S.pkg.items.filter(i => hasUpd(S.draft.updates[i.id])).map(i => {
       const u = S.draft.updates[i.id];
-      return { id:i.id, done:!!u.done, notes:(u.notes || '').trim(), photos:u.photos.map(p => ({ src:p.src, w:p.w, h:p.h })) };
+      return { id:i.id, done:!!u.done, notes:(u.notes || '').trim(), photos:u.photos.map(p => ({ id:p.id, src:p.src, w:p.w, h:p.h })) };
     });
     const resp = { subId:uid(), packageId:S.pkg.packageId, walkId:S.pkg.walkId, stand:S.pkg.stand, vendor:S.draft.vendor, submitted:Date.now(), items };
     const enc = await encJSON(resp, S.pass, 'punch-walk-vendor-response');

@@ -1327,22 +1327,29 @@ async function loadVendorResponse(file){
   if(w.vendorSubs.some(s => s.id === r.subId)){ toast('This response is already loaded.'); return; }
   const str = (v, n) => String(v == null ? '' : v).slice(0, n);
   const sub = { id:str(r.subId, 80) || uid(), packageId:str(r.packageId, 80), vendor:{ name:str(r.vendor && r.vendor.name, 120), company:str(r.vendor && r.vendor.company, 120), email:str(r.vendor && r.vendor.email, 160) }, submitted:Number(r.submitted) || Date.now(), imported:Date.now(), items:[] };
-  let photoCount = 0;
+  let photoCount = 0, skipped = 0;
+  // Vendors may resend earlier work in a later response: skip photos and entries already received
+  const seenV = new Set(); const lastEntry = {};
+  for(const s0 of w.vendorSubs) for(const e0 of s0.items){ (e0.vids || []).forEach(v => seenV.add(v)); lastEntry[e0.itemId] = e0; }
   for(const e of (Array.isArray(r.items) ? r.items : [])){
     if(!w.items.some(i => i.id === e.id)) continue;
     const notes = str(e.notes, 5000).trim(), done = e.done === true;
     const pics = (Array.isArray(e.photos) ? e.photos : []).filter(p => p && typeof p.src === 'string' && p.src.startsWith('data:image/'));
     if(!notes && !done && !pics.length) continue;
-    const photoIds = [];
-    for(const p of pics){
+    const fresh = pics.filter(p => !(p.id && seenV.has(String(p.id))));
+    const prev = lastEntry[e.id];
+    if(prev && !fresh.length && prev.notes === notes && prev.done === done){ skipped++; continue; }
+    const photoIds = [], vids = [];
+    for(const p of fresh){
+      if(p.id) vids.push(String(p.id));
       const rec = { id:'p' + uid(), src:p.src, ann:null, shapes:[], w:Number(p.w) || 1280, h:Number(p.h) || 960, kind:'vendor', walkId:w.id, itemId:e.id, caption:'', taken:sub.submitted };
       await DB.put('photos', rec.id, rec); photoIds.push(rec.id); photoCount++;
     }
-    sub.items.push({ itemId:e.id, done, notes, photoIds, review:{ state:'pending' } });
+    sub.items.push({ itemId:e.id, done, notes, photoIds, vids, review:{ state:'pending' } });
   }
-  if(!sub.items.length){ toast('The response has no updates for this walk.'); return; }
+  if(!sub.items.length){ toast(skipped ? 'Everything in this response was already loaded from an earlier file.' : 'The response has no updates for this walk.', 5000); return; }
   w.vendorSubs.push(sub); saveWalk(true);
-  toast(`Loaded ${sub.items.length} update${sub.items.length === 1 ? '' : 's'} from ${sub.vendor.name || sub.vendor.email || 'the vendor'}`);
+  toast(`Loaded ${sub.items.length} update${sub.items.length === 1 ? '' : 's'} from ${sub.vendor.name || sub.vendor.email || 'the vendor'}${skipped ? ` (${skipped} already received, skipped)` : ''}`, 5000);
   renderVendors();
 }
 async function renderSubs(){
