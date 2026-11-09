@@ -97,6 +97,25 @@ textarea{min-height:88px;resize:vertical}
 .fsheet .ffoot{display:grid;grid-template-columns:1fr 2fr;gap:8px;padding:12px 0 calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
 .sechead{font-family:var(--font-display);font-weight:400;font-size:22px;letter-spacing:.02em;text-transform:uppercase;color:var(--accent);margin:12px 0 0;display:flex;align-items:baseline;justify-content:space-between;border-left:5px solid var(--energy-red);padding-left:10px}
 .sechead span{font-size:14px;color:var(--muted);font-family:var(--font-mono,monospace)}
+.cam{position:fixed;inset:0;z-index:58;background:#000;display:flex;flex-direction:column;color:#fff;padding-top:env(safe-area-inset-top,0px)}
+.cam-view{position:relative;flex:1;min-height:0}
+.cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+.cam-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .2s}
+.cam-flash.on{opacity:.75;transition:none}
+.cam-count{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);padding:6px 12px;border-radius:16px;font-weight:600;font-size:15px;white-space:nowrap}
+.cam-strip{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;min-height:74px;background:#000}
+.cam-strip .t{position:relative;flex:none;width:58px;height:58px;border-radius:8px;overflow:hidden;border:2px solid #fff}
+.cam-strip img{width:100%;height:100%;object-fit:cover;display:block}
+.cam-strip button{position:absolute;top:0;right:0;width:24px;height:24px;border:0;border-radius:0 0 0 8px;background:rgba(0,0,0,.7);color:#fff;font-size:16px;line-height:1;padding:0}
+.cam-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:10px max(20px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));background:#000}
+.cam-bar button{color:#fff;background:none;border:0;font-weight:700;font-size:17px;min-height:48px}
+.cam-bar #camCancel{justify-self:start}
+.cam-bar .done{justify-self:end;background:#4fa8d8;color:#06131c;border-radius:10px;padding:0 16px}
+.cam-bar .done:disabled{opacity:.4}
+.cam-bar .shutter{width:76px;height:76px;border-radius:50%;background:#fff;border:0;box-shadow:0 0 0 4px #000 inset,0 0 0 4px #fff}
+.cam-bar .shutter:active{transform:scale(.92)}
+.photobtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.photobtns .btn{justify-content:center}
 .tools{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 @media (max-width:520px){.tools{grid-template-columns:1fr}}
 .foot{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:5}
@@ -122,6 +141,7 @@ header.top{background:#ffffff;border-bottom:1px solid #D9E1EA;color:#101010}
 <main class="wrap" id="app"></main>
 <div class="foot" id="foot" hidden><div class="in"><div id="footText" class="note"></div><button class="btn primary" id="makeResp">Create response file</button></div></div>
 <div id="overlay"></div>
+<div id="camRoot"></div>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script>
 (function(){
@@ -437,8 +457,8 @@ function taskHTML(i){
     <div class="mine" data-drop="${esc(i.id)}">
       <div class="eyebrow">Your update</div>
       <div class="thumbs" id="ph-${esc(i.id)}">${u.photos.map((p, k) => `<div class="thumb"><img src="${p.src}" alt="Your photo ${k + 1}"><button class="view" data-view="${esc(i.id)}:m:${k}" aria-label="Enlarge photo"></button><button class="rm" data-rm="${esc(i.id)}:${k}" aria-label="Remove photo">×</button></div>`).join('')}</div>
-      <label class="btn filebtn">Add completion photos<input type="file" accept="image/*" multiple data-add="${esc(i.id)}"></label>
-      <div class="note">Or drag photos onto this box.</div>
+      <div class="photobtns">${HAS_CAM ? `<button class="btn primary" type="button" data-cam="${esc(i.id)}">Take photos</button>` : ''}<label class="btn filebtn">${HAS_CAM ? 'Choose photos' : 'Add completion photos'}<input type="file" accept="image/*" multiple data-add="${esc(i.id)}"></label></div>
+      ${HAS_CAM ? '' : '<div class="note">Or drag photos onto this box.</div>'}
       <label class="f"><span>Your notes</span><textarea data-notes="${esc(i.id)}" placeholder="What was done, when, and anything the PM should know">${esc(u.notes)}</textarea></label>
       <label class="check"><input type="checkbox" data-done="${esc(i.id)}" ${u.done ? 'checked' : ''}> Mark this task complete</label>
     </div>
@@ -456,6 +476,77 @@ function updateCard(id){
   const item = S.pkg.items.find(i => i.id === id);
   card.outerHTML = taskHTML(item); bindTask(id); refreshSummary();
 }
+const HAS_CAM = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && matchMedia('(pointer:coarse)').matches;
+/* ---------- multi-photo camera (same as the project manager's app) ---------- */
+async function openBurstCamera(onDone){
+  const root = $('#camRoot');
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ toast('This browser cannot open the camera here. Use Choose photos instead.'); return; }
+  const constraints = { audio:false, video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1920 }, height:{ ideal:1440 } } };
+  let stream;
+  try{ stream = await navigator.mediaDevices.getUserMedia(constraints); }
+  catch(e){
+    toast(e && e.name === 'NotAllowedError' ? 'Camera access is blocked. Allow camera access for this app in Settings, or use Choose photos.' : 'Could not start the camera. Use Choose photos instead.');
+    return;
+  }
+  const shots = []; let armedCancel = false;
+  root.innerHTML = `<div class="cam" role="dialog" aria-label="Camera">
+    <div class="cam-view"><video id="camV" playsinline muted autoplay></video><div class="cam-flash" id="camFlash"></div>
+      <div class="cam-count" id="camCount">Tap the shutter for each photo</div></div>
+    <div class="cam-strip" id="camStrip"></div>
+    <div class="cam-bar">
+      <button data-c="cancel" id="camCancel">Cancel</button>
+      <button class="shutter" data-c="shoot" aria-label="Take photo"></button>
+      <button data-c="done" class="done" id="camDone" disabled>Done</button>
+    </div>
+  </div>`;
+  document.body.style.overflow = 'hidden';
+  const video = $('#camV');
+  const attach = async st => { stream = st; video.srcObject = st; try{ await video.play(); }catch(_){} };
+  await attach(stream);
+  const stop = () => {
+    try{ stream.getTracks().forEach(t => t.stop()); }catch(_){}
+    document.removeEventListener('visibilitychange', onVis);
+    root.innerHTML = ''; root.onclick = null; document.body.style.overflow = '';
+  };
+  const onVis = async () => {
+    if(document.visibilityState !== 'visible' || !root.firstChild) return;
+    if(stream.getVideoTracks().every(t => t.readyState === 'ended')){
+      try{ await attach(await navigator.mediaDevices.getUserMedia(constraints)); }catch(_){ toast('The camera stopped. Tap Done to keep your photos.'); }
+    }
+  };
+  document.addEventListener('visibilitychange', onVis);
+  const refresh = () => {
+    $('#camCount').textContent = shots.length ? `${shots.length} photo${shots.length > 1 ? 's' : ''}` : 'Tap the shutter for each photo';
+    const done = $('#camDone'); done.disabled = !shots.length; done.textContent = shots.length ? `Done (${shots.length})` : 'Done';
+    $('#camStrip').innerHTML = shots.map((sh, i) => `<div class="t"><img src="${sh.src}" alt="Photo ${i + 1}"><button data-c="rm" data-i="${i}" aria-label="Remove photo ${i + 1}">×</button></div>`).join('');
+    const strip = $('#camStrip'); strip.scrollLeft = strip.scrollWidth;
+    armedCancel = false; $('#camCancel').textContent = 'Cancel';
+  };
+  const shoot = () => {
+    const vw = video.videoWidth, vh = video.videoHeight; if(!vw || !vh) return;
+    const sc = Math.min(1, 1280 / Math.max(vw, vh));
+    const w = Math.round(vw * sc), h = Math.round(vh * sc);
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    cv.getContext('2d').drawImage(video, 0, 0, w, h);
+    shots.push({ src: cv.toDataURL('image/jpeg', 0.8), w, h, taken: Date.now() });
+    const fl = $('#camFlash'); fl.classList.add('on'); setTimeout(() => fl.classList.remove('on'), 60);
+    try{ navigator.vibrate && navigator.vibrate(15); }catch(_){}
+    refresh();
+  };
+  root.onclick = e => {
+    const b = e.target.closest('[data-c]'); if(!b || b.disabled) return;
+    const c = b.dataset.c;
+    if(c === 'shoot') shoot();
+    else if(c === 'rm'){ shots.splice(Number(b.dataset.i), 1); refresh(); }
+    else if(c === 'done'){ const out = shots.slice(); stop(); onDone(out); }
+    else if(c === 'cancel'){
+      if(shots.length && !armedCancel){ armedCancel = true; b.textContent = `Discard ${shots.length}?`; return; }
+      stop();
+    }
+  };
+  refresh();
+}
+
 function loadImage(src){ return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }); }
 async function addPhotos(id, files){
   files = files.filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|heic|webp)$/i.test(f.name));
@@ -485,6 +576,8 @@ app.addEventListener('input', e => {
   if(t.dataset.notes){ upd(t.dataset.notes).notes = t.value; saveDraft(); refreshSummary(); const c = document.getElementById('t-' + t.dataset.notes); if(c) c.classList.toggle('updated', !!hasUpd(S.draft.updates[t.dataset.notes])); }
 });
 app.addEventListener('click', e => {
+  const cb = e.target.closest('[data-cam]');
+  if(cb){ const id = cb.dataset.cam; openBurstCamera(shots => { if(!shots.length) return; const u = upd(id); shots.forEach(sh => u.photos.push({ id:uid(), src:sh.src, w:sh.w, h:sh.h })); saveDraft(); updateCard(id); toast(`Added ${shots.length} photo${shots.length > 1 ? 's' : ''}`); }); return; }
   const rm = e.target.closest('[data-rm]');
   if(rm){ const [id, k] = rm.dataset.rm.split(':'); upd(id).photos.splice(Number(k), 1); saveDraft(); updateCard(id); return; }
   const vw = e.target.closest('[data-view]');

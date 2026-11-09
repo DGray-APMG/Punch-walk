@@ -930,7 +930,7 @@ function renderReport(){
     <div class="panel stack">
       <div class="eyebrow">Options</div>
       <button type="button" class="btn block optbtn" data-act="vendors">${I.share}<span class="grow"><b>Vendor updates</b><span class="note">Send task packages to vendors and review their responses</span></span>${pendingCount(w) ? `<b class="pendn">${pendingCount(w)}</b>` : ''}</button>
-      <button type="button" class="btn block optbtn" data-act="partner">${I.share}<span class="grow"><b>Share with walk partner</b><span class="note">Send the open items to someone walking with you. They view and update them on the vendor page.</span></span></button>
+      <button type="button" class="btn block optbtn" data-act="partner">${I.share}<span class="grow"><b>Share with GC or vendor</b><span class="note">Send the open items to the GC or a vendor walking with you. They view and update them on the vendor page.</span></span></button>
       <label class="btn block optbtn" style="cursor:pointer">${I.layers}<span class="grow"><b>Merge a walk file</b><span class="note">Combine a teammate's walk of this stand (from their phone) into yours</span></span><input type="file" id="mergeFile" accept=".zip,.json,application/zip,application/json" hidden></label>
       <button type="button" class="btn block optbtn" data-act="exportwalk">${I.file}<span class="grow"><b>Save full walk file</b><span class="note">Move this walk to another device, with every photo${w.lastExported ? `. Last saved ${esc(new Date(w.lastExported).toLocaleString())}` : ''}</span></span></button>
     </div>
@@ -2373,17 +2373,17 @@ async function buildVendorPackage(btn){
   }
 }
 
-/* ---------- walk partner: share the live punch list to the vendor page ---------- */
+/* ---------- share with GC or vendor: send the live punch list to the vendor page ---------- */
 function partnerSheet(){
   const w = S.walk;
   if(!normStand(w.stand)){ toast('Add the stand number in Walk details first. It is the password on the vendor page.'); return; }
   const n = w.items.filter(i => i.status === 'open' || !i.status).length;
   const root = $('#sheetRoot');
-  root.innerHTML = `<div class="sheet-back" data-s="close"><div class="sheet" role="dialog" aria-label="Share with walk partner">
-    <div class="eyebrow">Share with walk partner</div>
-    <div class="note">Sends every Not checked and Not complete item (${n}), for all trades, with your notes. Your partner opens it on the vendor page with the stand number as the password. No app passcode needed. They can add photos and notes and send a response file back to you.</div>
+  root.innerHTML = `<div class="sheet-back" data-s="close"><div class="sheet" role="dialog" aria-label="Share with GC or vendor">
+    <div class="eyebrow">Share with GC or vendor</div>
+    <div class="note">Sends every Not checked and Not complete item (${n}), for all trades, with your notes. The GC or vendor opens it on the vendor page with the stand number as the password. No app passcode needed. They can add photos and notes and send a response file back to you.</div>
     <label class="check"><input type="checkbox" id="wpPhotos"> <span>Include your photos <span class="note">(larger file; leave off for a quick AirDrop or text)</span></span></label>
-    <button class="btn primary block" data-s="go">${I.share}<span>Create walk partner file</span></button>
+    <button class="btn primary block" data-s="go">${I.share}<span>Create shared punch list</span></button>
     <button class="btn block" data-s="close">Close</button>
   </div></div>`;
   root.onclick = async e => {
@@ -2401,9 +2401,9 @@ async function buildPartnerFile(withPhotos){
     await buildVendorFile(dummy);
     const f = S.capture.find(x => /\.json$/.test(x.name)); S.capture = null; S.vendorOpts = keep;
     if(!f) return;
-    showFileReady(`Walk partner - ${safeName(w.stand)} - ${w.date} - ${new Date().toTimeString().slice(0, 5).replace(':', '')}.json`, f.blob,
-      `AirDrop or text it to your partner. They open ${vendorPageURL()} and choose this file; the password is ${w.stand}. Share a new file after each area to keep them current. When they send a response file back, load it under Report > Vendor updates.`);
-  }catch(e){ toast('Could not create the walk partner file.'); }
+    showFileReady(`Shared punch list - ${safeName(w.stand)} - ${w.date} - ${new Date().toTimeString().slice(0, 5).replace(':', '')}.json`, f.blob,
+      `AirDrop or text it to the GC or vendor. They open ${vendorPageURL()} and choose this file; the password is ${w.stand}. Share a new file after each area to keep them current. When they send a response file back, load it under Report > Vendor updates.`);
+  }catch(e){ toast('Could not create the shared punch list.'); }
   finally{ S.capture = null; S.partnerMode = false; S.vendorOpts = keep; }
 }
 
@@ -2445,7 +2445,7 @@ async function mergeWalkFile(file){
   if(normStand(other.stand) && normStand(w.stand) && normStand(other.stand) !== normStand(w.stand)){
     toast(`That walk file is for stand ${other.stand}, not ${w.stand}.`, 6000); return;
   }
-  const from = (other.by || '').trim() || 'Partner';
+  const from = (other.by || '').trim() || 'Teammate';
   const photosById = {}; (data.photos || []).forEach(p => { photosById[p.id] = p; });
   const addPhoto = async pid => { const p = photosById[pid]; if(!p || !p.src) return false; if(!(await DB.get('photos', pid))) await DB.put('photos', pid, Object.assign({}, p, { walkId: w.id })); return true; };
   const label = st => ({ open:'Not complete', complete:'Complete', na:'N/A' })[st] || st;
