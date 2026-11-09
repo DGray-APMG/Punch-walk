@@ -1305,7 +1305,8 @@ async function buildVendorFile(btn){
       if(S.vendorOpts.photos) for(const pid of it.photos){ const p = await DB.get('photos', pid); if(p && p.kind !== 'vendor') photos.push((await shrinkDataURL(p.ann || p.src, 1024, 0.78)).src); }
       out.push({ id:it.id, no:it.no, item:it.item, location:it.location, division:it.division, resp:it.resp, status:it.status || '', notes:it.notes || '', photos });
     }
-    const pkg = { packageId:uid(), walkId:w.id, stand:w.stand, address:w.address || '', date:w.date, gc:w.gc || '', cpm:{ name:w.by || '', email }, resp:S.vendorOpts.resp || 'All', created:Date.now(), items:out };
+    // Files for the same walk and scope share a series, so the vendor page replaces an older one
+    const pkg = { packageId:uid(), series:`${w.id}:${S.partnerMode ? 'partner' : (S.vendorOpts.resp || 'All')}`, walkId:w.id, stand:w.stand, address:w.address || '', date:w.date, gc:w.gc || '', cpm:{ name:w.by || '', email }, resp:S.vendorOpts.resp || 'All', created:Date.now(), items:out };
     const enc = await encJSON(pkg, normStand(w.stand), 'punch-walk-vendor-tasks');
     w.vendorPackages = w.vendorPackages || []; w.vendorPackages.push({ id:pkg.packageId, resp:pkg.resp, created:pkg.created, count:out.length }); saveWalk(true);
     const label = safeName(S.vendorOpts.resp || 'All vendors');
@@ -2396,14 +2397,14 @@ async function buildPartnerFile(withPhotos){
   const w = S.walk, keep = S.vendorOpts;
   const dummy = document.createElement('button');
   try{
-    S.capture = []; S.vendorOpts = Object.assign({}, keep || {}, { resp:'', open:true, todo:true, photos:withPhotos });
+    S.capture = []; S.partnerMode = true; S.vendorOpts = Object.assign({}, keep || {}, { resp:'', open:true, todo:true, photos:withPhotos });
     await buildVendorFile(dummy);
     const f = S.capture.find(x => /\.json$/.test(x.name)); S.capture = null; S.vendorOpts = keep;
     if(!f) return;
     showFileReady(`Walk partner - ${safeName(w.stand)} - ${w.date} - ${new Date().toTimeString().slice(0, 5).replace(':', '')}.json`, f.blob,
       `AirDrop or text it to your partner. They open ${vendorPageURL()} and choose this file; the password is ${w.stand}. Share a new file after each area to keep them current. When they send a response file back, load it under Report > Vendor updates.`);
   }catch(e){ toast('Could not create the walk partner file.'); }
-  finally{ S.capture = null; S.vendorOpts = keep; }
+  finally{ S.capture = null; S.partnerMode = false; S.vendorOpts = keep; }
 }
 
 /* ---------- merge another device's walk file into this walk ---------- */
