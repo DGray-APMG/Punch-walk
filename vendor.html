@@ -76,7 +76,7 @@ textarea{min-height:88px;resize:vertical}
 .orig .txt{font-weight:600;font-size:17px;line-height:1.3;overflow-wrap:anywhere}
 .meta{display:flex;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .meta span{background:var(--surface-2);border-radius:6px;padding:2px 8px}
-.cpmnote{background:var(--surface-2);border-radius:8px;padding:8px 10px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.cpmnote{background:var(--surface-2);border-left:4px solid var(--bad);border-radius:8px;padding:8px 10px;font-size:15px;font-weight:600;color:var(--bad);white-space:pre-wrap;overflow-wrap:anywhere}
 .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px}
 .thumb{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--surface-2)}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
@@ -795,7 +795,7 @@ async function makeCompletionPDF(all, withPm, resps){
       doc.setFillColor(...(u.done ? green : hasUpd(u) ? blue : line)); doc.rect(M, y, 4, 34, 'F');
       text(`#${i.no || '—'}  ${i.item}`, 11.5, { bold:true, x: M + 12, width: CW - 12, after: 1 });
       text(`${i.location || ''} · ${i.resp || 'Unassigned'} · ${u.done ? 'Marked complete' : hasUpd(u) ? 'Updated, not marked complete' : 'Not updated'}`, 9, { x: M + 12, width: CW - 12, color: u.done ? green : muted, after: 5 });
-      if(withPm && i.notes) text('Project manager: ' + i.notes, 9.5, { x: M + 12, width: CW - 12, color: muted, after: 3 });
+      if(withPm && i.notes) text('Project manager: ' + i.notes, 9.5, { x: M + 12, width: CW - 12, color: [228,0,43], bold:true, after: 3 });
       if(withPm) await photoRow((i.photos || []).map(src => ({ src })), "PROJECT MANAGER'S PHOTOS");
       if((u.notes || '').trim()) text('Notes: ' + u.notes.trim(), 10, { x: M + 12, width: CW - 12, after: 4 });
       await photoRow(u.photos || [], 'COMPLETION PHOTOS');
