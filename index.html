@@ -127,7 +127,13 @@ textarea{min-height:96px;resize:vertical}
 .row.st-complete{border-left-color:var(--ok)}
 .row.st-open{border-left-color:var(--bad)}
 .row.st-na{border-left-color:var(--na)}
-.row-main{flex:1;min-width:0;text-align:left;background:none;border:0;padding:10px 10px 10px 12px;display:flex;flex-direction:column;gap:4px}
+.row-main{flex:1;min-width:0;text-align:left;background:none;border:0;padding:10px 10px 10px 12px;display:flex;flex-direction:row;align-items:center;gap:12px}
+.rbody{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:4px}
+.rthumbs{flex:0 1 auto;display:flex;gap:6px;overflow:hidden;max-width:55%;height:60px;margin-left:auto}
+.rth{position:relative;flex:none;display:block}
+.rthumbs img{flex:none;width:60px;height:60px;border-radius:8px;object-fit:cover;border:1px solid var(--line)}
+.rthumbs .more{position:absolute;right:3px;bottom:3px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;border-radius:6px;padding:1px 5px}
+@media (max-width:640px){.row-main{flex-direction:column;align-items:stretch;gap:6px}.rthumbs{max-width:100%;height:44px;margin-left:0}.rthumbs img{width:44px;height:44px}}
 .row-main .txt{font-weight:500;line-height:1.3;overflow-wrap:anywhere}
 .row-main .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);align-items:center}
 .row-main .no{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
@@ -634,16 +640,50 @@ function visibleItems(){
   w.locations.forEach(loc => w.items.forEach(it => { if(it.location === loc && itemVisible(it)) out.push(it); }));
   return out;
 }
+/* Small photo thumbnails in the list, loaded only for rows on screen */
+const THUMBS = new Map();
+async function thumbFor(pid){
+  const p = await DB.get('photos', pid); if(!p) return null;
+  const src = p.ann || p.src; if(!src) return null;
+  const key = pid + ':' + src.length; // a marked-up photo gets a new thumbnail
+  if(THUMBS.has(key)) return THUMBS.get(key);
+  const t = await new Promise(res => { const im = new Image(); im.onload = () => {
+    const sz = 144, sc = Math.max(sz / im.naturalWidth, sz / im.naturalHeight);
+    const cv = document.createElement('canvas'); cv.width = sz; cv.height = sz;
+    const w = im.naturalWidth * sc, h = im.naturalHeight * sc;
+    cv.getContext('2d').drawImage(im, (sz - w) / 2, (sz - h) / 2, w, h);
+    res(cv.toDataURL('image/jpeg', 0.7)); }; im.onerror = () => res(null); im.src = src; });
+  if(t) THUMBS.set(key, t);
+  return t;
+}
+let thumbObs = null;
+function fillThumbs(){
+  if(!thumbObs) thumbObs = new IntersectionObserver(ents => ents.forEach(async en => {
+    if(!en.isIntersecting) return;
+    const el = en.target; thumbObs.unobserve(el);
+    const it = S.walk && S.walk.items.find(x => x.id === el.dataset.th); if(!it) return;
+    const ids = it.photos.slice(0, 6), urls = [];
+    for(const pid of ids){ const u = await thumbFor(pid); if(u) urls.push(u); }
+    el.innerHTML = urls.map(u => `<span class="rth"><img src="${u}" alt=""></span>`).join('');
+    // Badge the last photo that fits with how many more the item has
+    const boxes = [...el.children], lim = el.getBoundingClientRect().right + 1;
+    const shown = boxes.filter(x => x.getBoundingClientRect().right <= lim);
+    const more = it.photos.length - shown.length;
+    if(more > 0 && shown.length) shown[shown.length - 1].insertAdjacentHTML('beforeend', `<b class="more">+${more}</b>`);
+  }), { rootMargin:'300px' });
+  document.querySelectorAll('.rthumbs[data-th]:not([data-obs])').forEach(el => { el.dataset.obs = '1'; thumbObs.observe(el); });
+}
 function rowHTML(it){
   const st = it.status || '';
   return `<div class="row st-${st || 'none'}" data-id="${esc(it.id)}">
     <button class="row-main" data-act="item" data-id="${esc(it.id)}">
-      <span class="txt">${esc(it.item)}</span>
+      <span class="rbody"><span class="txt">${esc(it.item)}</span>
       <span class="meta"><span class="no">#${esc(it.no || '—')}</span><span>${esc(it.resp || 'No resp.')}</span>
         ${it.photos.length ? `<span class="tag">${I.cam}${it.photos.length}</span>` : ''}
         ${it.notes ? `<span class="tag">${I.note}Note</span>` : ''}
         ${it.fa ? '<span class="tag">Final approved</span>' : ''}
-        ${pendingFor(S.walk, it.id) ? '<span class="tag vtag">Vendor update to review</span>' : ''}</span>
+        ${pendingFor(S.walk, it.id) ? '<span class="tag vtag">Vendor update to review</span>' : ''}</span></span>
+      ${it.photos.length ? `<span class="rthumbs" data-th="${esc(it.id)}" aria-hidden="true"></span>` : ''}
     </button>
     <div class="seg" role="group" aria-label="Status">
       <button class="ok" data-act="st" data-st="complete" aria-pressed="${st==='complete'}" aria-label="Complete">${I.check}</button>
@@ -746,6 +786,7 @@ function renderList(){
     const done = all.filter(it => it.status).length;
     html += `<div class="group"><h3>${esc(loc)}</h3><span class="note mono">${done}/${all.length}</span></div><div class="items">${vis.map(rowHTML).join('')}</div>`;
   });
+  setTimeout(fillThumbs, 0);
   list.innerHTML = html || `<div class="empty stack" style="align-items:center"><div>No items match these filters.</div><button class="btn" data-act="clearfilters">${I.x}<span>Clear filters</span></button></div>`;
 }
 function refreshCounts(){
@@ -930,7 +971,7 @@ function renderReport(){
     <div class="panel stack">
       <div class="eyebrow">Options</div>
       <button type="button" class="btn block optbtn" data-act="vendors">${I.share}<span class="grow"><b>Vendor updates</b><span class="note">Send task packages to vendors and review their responses</span></span>${pendingCount(w) ? `<b class="pendn">${pendingCount(w)}</b>` : ''}</button>
-      <button type="button" class="btn block optbtn" data-act="partner">${I.share}<span class="grow"><b>Share with GC or vendor</b><span class="note">Send the open items to the GC or a vendor walking with you. They view and update them on the vendor page.</span></span></button>
+      <button type="button" class="btn block optbtn" data-act="partner">${I.share}<span class="grow"><b>Share with GC or vendor</b><span class="note">Send the punch list to the GC or a vendor walking with you. They view and update it on the vendor page.</span></span></button>
       <label class="btn block optbtn" style="cursor:pointer">${I.layers}<span class="grow"><b>Merge a walk file</b><span class="note">Combine a teammate's walk of this stand (from their phone) into yours</span></span><input type="file" id="mergeFile" accept=".zip,.json,application/zip,application/json" hidden></label>
       <button type="button" class="btn block optbtn" data-act="exportwalk">${I.file}<span class="grow"><b>Save full walk file</b><span class="note">Move this walk to another device, with every photo${w.lastExported ? `. Last saved ${esc(new Date(w.lastExported).toLocaleString())}` : ''}</span></span></button>
     </div>
@@ -1247,6 +1288,7 @@ async function renderVendors(){
       <label class="f"><span>Responsible party</span><select id="v-resp"><option value="">All responsible parties</option>${Object.entries(openBy).sort().map(([k, v]) => `<option value="${esc(k)}" ${vo.resp === k ? 'selected' : ''}>${esc(k)} (${v.open} not complete${v.todo ? `, ${v.todo} not checked` : ''})</option>`).join('')}</select></label>
       <label class="check"><input type="checkbox" id="v-open" ${vo.open ? 'checked' : ''}> Include Not complete items</label>
       <label class="check"><input type="checkbox" id="v-todo" ${vo.todo ? 'checked' : ''}> Include Not checked items</label>
+      <label class="check"><input type="checkbox" id="v-closed" ${vo.closed ? 'checked' : ''}> Include Complete and N/A items (the entire list)</label>
       <label class="check"><input type="checkbox" id="v-photos" ${vo.photos ? 'checked' : ''}> Include your photos (marked up)</label>
       <label class="f"><span>Your email for vendor replies</span><input type="text" id="v-cpmEmail" inputmode="email" autocomplete="email" value="${esc(cpmEmail)}" placeholder="name@anchorpointmg.com"></label>
       <label class="f"><span>Respond by (optional)</span><input type="date" id="v-due" value="${esc(w.vendorDue || '')}"></label>
@@ -1268,7 +1310,7 @@ async function renderVendors(){
 }
 function vendorItems(){
   const w = S.walk, vo = S.vendorOpts;
-  return w.items.filter(i => ((vo.open && i.status === 'open') || (vo.todo && !i.status)) && (!vo.resp || (i.resp || 'Unassigned') === vo.resp));
+  return w.items.filter(i => ((vo.open && i.status === 'open') || (vo.todo && !i.status) || (vo.closed && (i.status === 'complete' || i.status === 'na'))) && (!vo.resp || (i.resp || 'Unassigned') === vo.resp));
 }
 function updateVendorCount(){ const el = $('#v-count'); if(el){ const n = vendorItems().length; el.textContent = `${n} item${n === 1 ? '' : 's'} will be in the file.`; } }
 function vendorInstructions(){
@@ -1449,7 +1491,7 @@ app.addEventListener('click', async e => {
   else if(act === 'clearfilters'){ S.filter = 'all'; resetScope(); S.q = ''; const q = $('#q'); if(q) q.value = ''; updatePills(); refreshCounts(); renderList(); window.scrollTo(0, 0); toast('Filters cleared'); }
   else if(act === 'st'){
     const row = b.closest('.row'); const it = setStatus(row.dataset.id, b.dataset.st);
-    if(it){ row.outerHTML = rowHTML(it); refreshCounts(); }
+    if(it){ row.outerHTML = rowHTML(it); refreshCounts(); fillThumbs(); }
   }
   else if(act === 'item'){ S.itemId = b.dataset.id; go('item'); }
   else if(act === 'goitem'){ if(b.dataset.id){ S.itemId = b.dataset.id; go('item'); } }
@@ -1597,8 +1639,8 @@ app.addEventListener('change', async e => {
   else if(id === 'mergeFile'){ const f = e.target.files && e.target.files[0]; e.target.value = ''; if(f) mergeWalkFile(f); }
   else if(id === 'walkFile'){ const f = e.target.files && e.target.files[0]; e.target.value = ''; if(f) readWalkFile(f); }
   else if(id === 'vrFile'){ const f = e.target.files && e.target.files[0]; e.target.value = ''; if(f) loadVendorResponse(f); }
-  else if(id === 'v-resp' || id === 'v-open' || id === 'v-todo' || id === 'v-photos'){
-    S.vendorOpts.resp = $('#v-resp').value; S.vendorOpts.open = $('#v-open').checked; S.vendorOpts.todo = $('#v-todo').checked; S.vendorOpts.photos = $('#v-photos').checked; updateVendorCount();
+  else if(id === 'v-resp' || id === 'v-open' || id === 'v-todo' || id === 'v-closed' || id === 'v-photos'){
+    S.vendorOpts.resp = $('#v-resp').value; S.vendorOpts.open = $('#v-open').checked; S.vendorOpts.todo = $('#v-todo').checked; S.vendorOpts.closed = $('#v-closed').checked; S.vendorOpts.photos = $('#v-photos').checked; updateVendorCount();
   }
   else if(id === 'gCam' || id === 'gLib'){
     const files = [...(e.target.files || [])]; e.target.value = '';
@@ -2356,7 +2398,7 @@ async function buildVendorPackage(btn){
     await buildVendorFile(btn); btn.disabled = true;
     const task = S.capture.find(f => /\.json$/.test(f.name)); if(!task) throw new Error('task file');
     toast('Building vendor package: punch list…', 120000);
-    w.reportOpts = Object.assign(defaultRepOpts(), { st:{ open: !!vo.open, todo: !!vo.todo, complete:false, na:false }, resp: vo.resp ? [vo.resp] : [], photos: !!vo.photos, site:false, sort:'location' });
+    w.reportOpts = Object.assign(defaultRepOpts(), { st:{ open: !!vo.open, todo: !!vo.todo, complete: !!vo.closed, na: !!vo.closed }, resp: vo.resp ? [vo.resp] : [], photos: !!vo.photos, site:false, sort:'location' });
     S.capture = []; S.pdfMaxPx = 1000;
     await makePDF(btn); btn.disabled = true;
     S.pdfMaxPx = 0; w.reportOpts = keepRep;
@@ -2384,11 +2426,13 @@ async function buildVendorPackage(btn){
 function partnerSheet(){
   const w = S.walk;
   if(!normStand(w.stand)){ toast('Add the stand number in Walk details first. It is the password on the vendor page.'); return; }
-  const n = w.items.filter(i => i.status === 'open' || !i.status).length;
+  const nOpen = w.items.filter(i => i.status === 'open' || !i.status).length, nAll = w.items.length;
   const root = $('#sheetRoot');
   root.innerHTML = `<div class="sheet-back" data-s="close"><div class="sheet" role="dialog" aria-label="Share with GC or vendor">
     <div class="eyebrow">Share with GC or vendor</div>
-    <div class="note">Sends every Not checked and Not complete item (${n}), for all trades, with your notes. The GC or vendor opens it on the vendor page with the stand number as the password. No app passcode needed. They can add photos and notes and send a response file back to you.</div>
+    <div class="note">Sends the punch list for all trades, with your notes and statuses. The GC or vendor opens it on the vendor page with the stand number as the password. No app passcode needed. They can add photos and notes and send a response file back to you.</div>
+    <label class="check"><input type="radio" name="wpScope" value="all" checked> <span>Entire list <span class="note">(${nAll} items, including Complete and N/A)</span></span></label>
+    <label class="check"><input type="radio" name="wpScope" value="open"> <span>Open items only <span class="note">(${nOpen} Not complete and Not checked)</span></span></label>
     <label class="check"><input type="checkbox" id="wpPhotos"> <span>Include your photos <span class="note">(larger file; leave off for a quick AirDrop or text)</span></span></label>
     <button class="btn primary block" data-s="go">${I.share}<span>Create shared punch list</span></button>
     <button class="btn block" data-s="close">Close</button>
@@ -2397,14 +2441,14 @@ function partnerSheet(){
     const b = e.target.closest('[data-s]'); if(!b) return;
     if(b.classList.contains('sheet-back') && e.target !== b) return;
     if(b.dataset.s === 'close'){ root.innerHTML = ''; root.onclick = null; }
-    else if(b.dataset.s === 'go'){ const ph = $('#wpPhotos').checked; root.innerHTML = ''; root.onclick = null; await buildPartnerFile(ph); }
+    else if(b.dataset.s === 'go'){ const ph = $('#wpPhotos').checked, all = root.querySelector('[name=wpScope]:checked').value === 'all'; root.innerHTML = ''; root.onclick = null; await buildPartnerFile(ph, all); }
   };
 }
-async function buildPartnerFile(withPhotos){
+async function buildPartnerFile(withPhotos, all){
   const w = S.walk, keep = S.vendorOpts;
   const dummy = document.createElement('button');
   try{
-    S.capture = []; S.partnerMode = true; S.vendorOpts = Object.assign({}, keep || {}, { resp:'', open:true, todo:true, photos:withPhotos });
+    S.capture = []; S.partnerMode = true; S.vendorOpts = Object.assign({}, keep || {}, { resp:'', open:true, todo:true, closed:all !== false, photos:withPhotos });
     await buildVendorFile(dummy);
     const f = S.capture.find(x => /\.json$/.test(x.name)); S.capture = null; S.vendorOpts = keep;
     if(!f) return;
