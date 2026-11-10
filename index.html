@@ -2408,8 +2408,12 @@ async function buildPartnerFile(withPhotos){
     await buildVendorFile(dummy);
     const f = S.capture.find(x => /\.json$/.test(x.name)); S.capture = null; S.vendorOpts = keep;
     if(!f) return;
-    showFileReady(`Shared punch list - ${safeName(w.stand)} - ${w.date} - ${new Date().toTimeString().slice(0, 5).replace(':', '')}.json`, f.blob,
-      `AirDrop or text it to the GC or vendor. They open ${vendorPageURL()} and choose this file; the password is ${w.stand}. Share a new file after each area to keep them current. When they send a response file back, load it under Report > Vendor updates.`);
+    // Zipped so phones preview and save it instantly (a large .json stalls the Messages preview)
+    const base = `Shared punch list - ${safeName(w.stand)} - ${w.date} - ${new Date().toTimeString().slice(0, 5).replace(':', '')}`;
+    let out = f.blob, outName = base + '.json';
+    if(window.JSZip){ const z = new window.JSZip(); z.file(base + '.json', f.blob); out = await z.generateAsync({ type:'blob', compression:'DEFLATE', compressionOptions:{ level:6 }, mimeType:'application/zip' }); outName = base + '.zip'; }
+    showFileReady(outName, out,
+      `AirDrop or text it to the GC or vendor. They save it (press and hold it in Messages, then Share > Save to Files), open ${vendorPageURL()} and choose this file, no need to unzip it; the password is ${w.stand}. Share a new file after each area to keep them current. When they send a response file back, load it under Report > Vendor updates.`);
   }catch(e){ toast('Could not create the shared punch list.'); }
   finally{ S.capture = null; S.partnerMode = false; S.vendorOpts = keep; }
 }

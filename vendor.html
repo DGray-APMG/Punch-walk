@@ -143,6 +143,7 @@ header.top{background:#ffffff;border-bottom:1px solid #D9E1EA;color:#101010}
 <div id="overlay"></div>
 <div id="camRoot"></div>
 <script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
 <script>
 (function(){
 "use strict";
@@ -200,7 +201,7 @@ async function startScreen(err){
       <div class="note">The project manager emailed you a task file (a .json file). Save it to this computer or phone, then open it here. Your password is the stand number. If a teammate sent you a team progress file, open that here instead to see their work.</div>
       <div class="drop" id="drop">
         <strong>Drag the task file here</strong><span class="note">or</span>
-        <label class="btn primary filebtn">Choose task file<input type="file" id="pkgFile" accept=".json,application/json"></label>
+        <label class="btn primary filebtn">Choose task file<input type="file" id="pkgFile" accept=".json,.zip,application/json,application/zip"></label>
       </div>
       ${err ? `<div class="err">${esc(err)}</div>` : ''}
     </div>
@@ -217,9 +218,21 @@ async function startScreen(err){
     if(b.dataset.armed){ await store.del(b.dataset.forget); startScreen(); } else { b.dataset.armed = '1'; b.textContent = 'Remove saved work?'; }
   }));
 }
+// Task files can arrive as .json or zipped (.zip previews and saves easily on phones)
+async function readJSONFile(file){
+  const head = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+  if(head[0] === 0x50 && head[1] === 0x4B){
+    if(!window.JSZip) throw new Error('nozip');
+    const zip = await window.JSZip.loadAsync(file);
+    const entry = Object.values(zip.files).find(z => !z.dir && /\.json$/i.test(z.name) && !/^__MACOSX/.test(z.name));
+    if(!entry) throw new Error('nojson');
+    return JSON.parse(await entry.async('string'));
+  }
+  return JSON.parse(await file.text());
+}
 async function readPkg(file){
   let enc;
-  try{ enc = JSON.parse(await file.text()); }catch(e){ return startScreen('That file could not be read. Choose the task file from your email.'); }
+  try{ enc = await readJSONFile(file); }catch(e){ return startScreen('That file could not be read. Choose the task file from your email.'); }
   if(enc && enc.format === 'punch-walk-vendor-progress'){ S.enc = null; S.progEnc = enc; S.resume = null; return passScreen(); }
   S.progEnc = null;
   if(!enc || enc.format !== 'punch-walk-vendor-tasks') return startScreen(enc && enc.format === 'punch-walk-vendor-response' ? 'That is a response file. Open the task file you received instead.' : 'That is not a Punch Walk task file.');
@@ -323,7 +336,7 @@ async function openTasks(fromDraft){
 // "Open updated file" on the task screen: load a newer file without going back to the start
 async function openUpdatedFile(file){
   let enc;
-  try{ enc = JSON.parse(await file.text()); }catch(e){ toast('That file could not be read.'); return; }
+  try{ enc = await readJSONFile(file); }catch(e){ toast('That file could not be read.'); return; }
   clearTimeout(saveT); if(S.draft){ S.draft.saved = Date.now(); await store.put(S.draft.packageId, S.draft); }
   if(enc && enc.format === 'punch-walk-vendor-progress'){ S.enc = null; S.progEnc = enc; S.resume = null; $('#foot').hidden = true; return passScreen(); }
   if(!enc || enc.format !== 'punch-walk-vendor-tasks'){ toast(enc && enc.format === 'punch-walk-vendor-response' ? 'That is a response file. Choose the newer task file instead.' : 'That is not a Punch Walk task file.', 5000); return; }
@@ -366,7 +379,7 @@ function taskScreen(){
       <div class="note">Punch walk ${esc(p.date)}${p.gc ? ' · GC: ' + esc(p.gc) : ''} · Sent by ${esc(p.cpm.name || 'the project manager')}${p.cpm.email ? ' (' + esc(p.cpm.email) + ')' : ''}</div>
       <div class="note">Signed in as <strong>${esc(v.name)}</strong>${v.company ? ', ' + esc(v.company) : ''} · ${esc(v.email)} · <button class="chip" id="editMe" style="min-height:30px;padding:2px 10px">Change</button></div>
       <div class="banner">For each task: add photos showing the finished work, add a note if needed, and check "Mark this task complete". When you are done, click <strong>Create response file</strong> and email it back. The original task details cannot be changed here.</div>
-      <div class="tools"><label class="btn primary filebtn" id="newFileBtn" style="grid-column:1/-1">Open an updated file from the project manager<input type="file" accept=".json,application/json" id="newFile"></label><button class="btn" id="teamBtn">Share progress with my team</button><button class="btn" id="pdfBtn">Completion report (PDF)</button></div>
+      <div class="tools"><label class="btn primary filebtn" id="newFileBtn" style="grid-column:1/-1">Open an updated file from the project manager<input type="file" accept=".json,.zip,application/json,application/zip" id="newFile"></label><button class="btn" id="teamBtn">Share progress with my team</button><button class="btn" id="pdfBtn">Completion report (PDF)</button></div>
     </div>
     <div class="summary"><div class="chips">
       <button class="chip" data-f="all">All tasks</button><button class="chip" data-f="todo">Not updated</button><button class="chip" data-f="upd">Updated</button>
