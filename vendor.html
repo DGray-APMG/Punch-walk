@@ -60,6 +60,12 @@ textarea{min-height:88px;resize:vertical}
 .banner{background:var(--accent-soft);border-radius:12px;padding:12px 14px;font-size:14px}
 .summary{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips.scroll{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding-bottom:2px;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent)}
+.chips.scroll::-webkit-scrollbar{display:none}
+.chips.scroll .chip{flex:none;white-space:nowrap}
+.chips.scroll .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--bad);margin-right:6px;vertical-align:1px}
+.chip[aria-pressed="true"] .mono{opacity:.85}
 .chip{min-height:38px;border-radius:19px;border:1px solid var(--line);background:var(--surface-2);padding:6px 14px;font-weight:600;font-size:14px}
 .rfilter{display:flex;flex-direction:column;gap:8px}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -381,9 +387,8 @@ function taskScreen(){
       <div class="banner">For each task: add photos showing the finished work, add a note if needed, and check "Mark this task complete". When you are done, click <strong>Create response file</strong> and email it back. The original task details cannot be changed here.</div>
       <div class="tools"><label class="btn primary filebtn" id="newFileBtn" style="grid-column:1/-1">Open an updated file from the project manager<input type="file" accept=".json,.zip,application/json,application/zip" id="newFile"></label><button class="btn" id="teamBtn">Share progress with my team</button><button class="btn" id="pdfBtn">Completion report (PDF)</button></div>
     </div>
-    <div class="summary"><div class="chips">
-      <button class="chip" data-f="all">All tasks</button><button class="chip" data-f="todo">Not updated</button><button class="chip" data-f="upd">Updated</button>
-    </div><div class="note mono" id="sumText"></div></div>
+    <div class="chips scroll" id="stChips" role="toolbar" aria-label="Status"></div>
+    <div class="note mono" id="sumText"></div>
     <div class="frow"><input type="search" id="vq" placeholder="Search tasks or notes" aria-label="Search tasks" autocomplete="off"><button class="fbtn" id="vfBtn" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"/></svg><span>Filter</span></button></div>
     <div id="vfbar"></div>
     <div class="stack" id="tasks"></div>
@@ -392,8 +397,8 @@ function taskScreen(){
   $('#teamBtn').addEventListener('click', e => makeTeamFile(e.currentTarget));
   $('#pdfBtn').addEventListener('click', () => pdfSheet());
   $('#newFile').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if(f) openUpdatedFile(f); });
-  app.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { S.filter = b.dataset.f; renderTasks(); }));
-  S.resp = []; S.div = []; S.loc = []; S.q = '';
+  $('#stChips').addEventListener('click', e => { const b = e.target.closest('[data-st]'); if(!b) return; S.st = b.dataset.st; renderTasks(); });
+  S.resp = []; S.div = []; S.loc = []; S.q = ''; S.st = 'all'; S.filter = 'all';
   $('#vfBtn').addEventListener('click', () => filterSheet());
   let qt; $('#vq').addEventListener('input', e => { clearTimeout(qt); qt = setTimeout(() => { S.q = e.target.value.trim(); renderTasks(); }, 300); });
   $('#foot').hidden = false;
@@ -405,7 +410,6 @@ function refreshSummary(){
   $('#sumText').textContent = `${u} of ${n} updated · ${d} marked complete · ${ph} photos`;
   $('#footText').textContent = u ? `${u} task${u === 1 ? '' : 's'} ready to send` : 'Update at least one task to create a response file';
   $('#makeResp').disabled = !u;
-  app.querySelectorAll('[data-f]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === S.filter)));
 }
 /* ---------- filters (same as the project manager's app) ---------- */
 const divOf = i => i.division || 'No division';
@@ -415,7 +419,26 @@ const FGROUPS = [
   { key:'div', title:'Division', of: divOf, vals: () => [...new Set(S.pkg.items.map(divOf))].sort() },
   { key:'loc', title:'Location', of: i => i.location || 'Other', vals: locOrder }
 ];
+// Status chips: the project manager's status for each task, same as the app
+const ST_CHIPS = [['all', 'All'], ['open', 'Not complete'], ['todo', 'Not checked'], ['complete', 'Complete'], ['na', 'N/A'], ['photos', 'With PM photos']];
+const stOk = (i, st) => st === 'all' || (st === 'open' ? i.status === 'open' : st === 'todo' ? !i.status : st === 'photos' ? (i.photos || []).length > 0 : i.status === st);
+function inScope(i){
+  if(S.resp.length && !S.resp.includes(respOf(i))) return false;
+  if(S.div.length && !S.div.includes(divOf(i))) return false;
+  if(S.loc.length && !S.loc.includes(i.location || 'Other')) return false;
+  return true;
+}
+function renderStChips(){
+  const box = $('#stChips'); if(!box) return;
+  const scoped = S.pkg.items.filter(inScope);
+  box.innerHTML = ST_CHIPS.map(([k, label]) => {
+    const n = scoped.filter(i => stOk(i, k)).length;
+    if(n === 0 && k !== 'all' && S.st !== k && !S.pkg.items.some(i => stOk(i, k))) return '';
+    return `<button class="chip${k === 'open' ? ' st-open' : ''}" data-st="${k}" aria-pressed="${S.st === k}">${k === 'open' ? '<span class="dot"></span>' : ''}${label} <span class="mono">${n}</span></button>`;
+  }).join('');
+}
 function matches(i){
+  if(!stOk(i, S.st || 'all')) return false;
   if(S.resp.length && !S.resp.includes(respOf(i))) return false;
   if(S.div.length && !S.div.includes(divOf(i))) return false;
   if(S.loc.length && !S.loc.includes(i.location || 'Other')) return false;
@@ -425,20 +448,21 @@ function matches(i){
   if(S.q){ const q = S.q.toLowerCase(); if(![i.item, i.no, i.notes, u && u.notes, i.location, i.resp].some(x => String(x || '').toLowerCase().includes(q))) return false; }
   return true;
 }
-const scopeN = () => S.resp.length + S.div.length + S.loc.length;
-const anyActive = () => scopeN() > 0 || S.filter !== 'all' || !!S.q;
+const scopeN = () => S.resp.length + S.div.length + S.loc.length + (S.filter !== 'all' ? 1 : 0);
+const anyActive = () => scopeN() > 0 || S.filter !== 'all' || (S.st || 'all') !== 'all' || !!S.q;
 function updateFilterUI(){
   const n = scopeN(), btn = $('#vfBtn');
   if(btn){ btn.classList.toggle('on', n > 0); btn.querySelector('span').textContent = n ? `Filter (${n})` : 'Filter'; }
   const bar = $('#vfbar'); if(!bar) return;
   if(!anyActive()){ bar.innerHTML = ''; return; }
   const parts = [S.resp, S.div, S.loc].map(v => v.join(', ')).filter(Boolean);
-  if(S.filter !== 'all') parts.push(S.filter === 'upd' ? 'Updated' : 'Not updated');
+  if((S.st || 'all') !== 'all') parts.push(ST_CHIPS.find(c => c[0] === S.st)[1]);
+  if(S.filter !== 'all') parts.push(S.filter === 'upd' ? 'Updated by you' : 'Not updated by you');
   if(S.q) parts.push('“' + S.q + '”');
   bar.innerHTML = `<div class="fbar"><div class="ftext">${esc(parts.join(' · '))}</div><button id="vfClear" aria-label="Clear all filters">✕ Clear all</button></div>`;
   $('#vfClear').addEventListener('click', clearFilters);
 }
-function clearFilters(){ S.resp = []; S.div = []; S.loc = []; S.filter = 'all'; S.q = ''; const q = $('#vq'); if(q) q.value = ''; renderTasks(); }
+function clearFilters(){ S.resp = []; S.div = []; S.loc = []; S.filter = 'all'; S.st = 'all'; S.q = ''; const q = $('#vq'); if(q) q.value = ''; renderTasks(); }
 function filterSheet(){
   const ov = $('#overlay');
   const draw = () => {
@@ -451,7 +475,7 @@ function filterSheet(){
         if(vals.length < 2 && !cur.length) return '';
         const chip = (v, label, n) => `<button class="chip" data-k="${g.key}" data-v="${esc(v)}" aria-pressed="${v === '' ? !cur.length : cur.includes(v)}">${esc(label)}${n != null ? ` <span class="mono">${n}</span>` : ''}</button>`;
         return `<div class="fgroup"><div class="eyebrow">${g.title}${cur.length ? ` · ${cur.length} selected` : ''}</div><div class="chips">${chip('', 'All')}${vals.map(v => chip(v, v, S.pkg.items.filter(i => g.of(i) === v).length)).join('')}</div></div>`;
-      }).join('')}</div>
+      }).join('')}<div class="fgroup"><div class="eyebrow">Your updates</div><div class="chips">${[['all', 'All'], ['todo', 'Not updated by you'], ['upd', 'Updated by you']].map(([k, l]) => `<button class="chip" data-uf="${k}" aria-pressed="${S.filter === k}">${l}</button>`).join('')}</div></div></div>
       <div class="ffoot"><button class="btn" id="fsClear">Clear all</button><button class="btn primary" id="fsGo">Show ${shown} task${shown === 1 ? '' : 's'}</button></div>
     </div></div>`;
     const nb = ov.querySelector('.fbody'); if(nb) nb.scrollTop = y;
@@ -459,6 +483,7 @@ function filterSheet(){
       const k = b.dataset.k, v = b.dataset.v; S[k] = v === '' ? [] : (S[k].includes(v) ? S[k].filter(x => x !== v) : S[k].concat(v));
       renderTasks(); draw();
     }));
+    ov.querySelectorAll('[data-uf]').forEach(b => b.addEventListener('click', () => { S.filter = b.dataset.uf; renderTasks(); draw(); }));
     $('#fsClear').addEventListener('click', () => { clearFilters(); draw(); });
     const close = () => { ov.innerHTML = ''; };
     $('#fsGo').addEventListener('click', close); $('#fsX').addEventListener('click', close);
@@ -476,6 +501,7 @@ function renderTasks(){
     : `<div class="panel note">No tasks match these filters. ${anyActive() ? '<button class="btn" id="emptyClear">Clear filters</button>' : ''}</div>`;
   const ec = $('#emptyClear'); if(ec) ec.addEventListener('click', clearFilters);
   list.forEach(i => bindTask(i.id));
+  renderStChips();
   updateFilterUI();
   refreshSummary();
 }
